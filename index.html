@@ -25,13 +25,13 @@ if(!data.entries[mondayKey]){
  ];
  data.entries[mondayKey]={done:true,sets:actual.map(rows=>rows.map(([kg,reps,rpe])=>({kg:String(kg),reps:String(reps),rpe:rpe==null?'':String(rpe)}))),knee:'0',arm:'0',notes:'Séance PUSH du lundi 12 octobre. Développé couché : 4 × 8 à 70 kg, RPE 7 sur la dernière série, récupération 120 s. Pec Deck en superset avec écartés poulie basse (contraction maintenue 3 s). Bonnes sensations pectorales, pas de douleur. RPE 7 sur incliné et Pec Deck ; RPE 9 sur écartés, élévations latérales et triceps.',updatedAt:'2026-10-12T20:00:00'};
 }
-let view='today',date=todayISO(),openId=null;function persist(){try{localStorage.setItem(KEY,JSON.stringify(data));return true}catch(e){alert('Stockage indisponible : exporte tes données depuis Données.');return false}}const eid=(s,d)=>d+'|'+s;function get(s,d){return data.entries[eid(s,d)]||{}}function set(s,d,patch){data.entries[eid(s,d)]={...get(s,d),...patch};persist()}function all(d){const moved=data.schedule?.[d];return moved?moved.map(id=>sessions.find(s=>s.id===id)).filter(Boolean):sessions.filter(s=>s.day===idx(d))}function header(){return `<div class="hero"><small>MON TRAINING V5.3.1 • STOCKAGE LOCAL</small><h1>${view==='today'?'Ta séance du jour':view==='week'?'Planning hebdomadaire':view==='progress'?'Ta progression':view==='lexicon'?'Lexique des exercices':'Sauvegardes & réglages'}</h1><span class="mini">Objectif : physique athlétique • 100 pompes • genou renforcé</span></div>`}function status(s,d){return get(s.id,d).done?' <span class="ok">✓ Terminée</span>':''}function dayButtons(){let m=isoOf(monday(date));return `<div class="days">${DAYS.map((_,i)=>`<button class="${date===plus(m,i)?'active':''}" data-date="${plus(m,i)}">${short[i]}<br>${plus(m,i).slice(8)}</button>`).join('')}</div>`}function renderToday(){return `<div class="row"><button data-shift="-7">‹ Sem.</button><b>${esc(new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'}))}</b><button data-shift="7">Sem. ›</button></div>${dayButtons()}<h2>${DAYS[idx(date)]}</h2>${all(date).map(s=>`<button class="card row" style="width:100%;text-align:left" data-open="${s.id}"><span><b>${esc(s.name)}</b><br><small>${s.optional?'Facultatif · ':''}${s.kind==='strength'?'Charges, répétitions, RPE':s.kind==='pushups'?'Séries et récupération':s.kind==='bike'?'20 minutes':s.kind==='knee'?'Stabilité et renforcement':'Suivi de séance'}</small></span><span>${status(s,date)||'›'}</span></button>`).join('')||'<p>Repos.</p>'}<div class="notice">Douleur persistante au genou ou au bras : réduis la charge et fais évaluer les symptômes. Le WOD remplace une séance, il ne s’ajoute pas à une semaine déjà fatigante.</div>`}function renderWeek(){const m=isoOf(monday(date));return `<div class="row"><button data-shift="-7">‹</button><b>Semaine du ${m.split('-').reverse().join('/')}</b><button data-shift="7">›</button></div>${DAYS.map((n,i)=>{const d=plus(m,i),list=all(d);return `<div class="card"><div class="row"><b>${n} ${d.slice(8)}</b><button data-date="${d}">Ouvrir</button></div>${list.map(s=>`<div class="mini" style="padding:5px 0">${get(s.id,d).done?'✓ ':'○ '}${esc(s.name)}</div>`).join('')}</div>`}).join('')}`}
+let view='today',date=todayISO(),openId=null;function persist(){try{localStorage.setItem(KEY,JSON.stringify(data));return true}catch(e){alert('Stockage indisponible : exporte tes données depuis Données.');return false}}const eid=(s,d)=>d+'|'+s;function get(s,d){return data.entries[eid(s,d)]||{}}function set(s,d,patch){data.entries[eid(s,d)]={...get(s,d),...patch};persist()}function all(d){const moved=data.schedule?.[d];return moved?moved.map(id=>sessions.find(s=>s.id===id)).filter(Boolean):sessions.filter(s=>s.day===idx(d))}function header(){return `<div class="hero"><small>MON TRAINING V5.3.3.6 • STOCKAGE LOCAL</small><h1>${view==='today'?'Ta séance du jour':view==='week'?'Planning hebdomadaire':view==='progress'?'Ta progression':view==='lexicon'?'Lexique des exercices':'Sauvegardes & réglages'}</h1><span class="mini">Objectif : physique athlétique • 100 pompes • genou renforcé</span></div>`}function status(s,d){return get(s.id,d).done?' <span class="ok">✓ Terminée</span>':''}function dayButtons(){let m=isoOf(monday(date));return `<div class="days">${DAYS.map((_,i)=>`<button class="${date===plus(m,i)?'active':''}" data-date="${plus(m,i)}">${short[i]}<br>${plus(m,i).slice(8)}</button>`).join('')}</div>`}function renderToday(){return `<div class="row"><button data-shift="-7">‹ Sem.</button><b>${esc(new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'}))}</b><button data-shift="7">Sem. ›</button></div>${dayButtons()}<h2>${DAYS[idx(date)]}</h2>${all(date).map(s=>`<button class="card row" style="width:100%;text-align:left" data-open="${s.id}"><span><b>${esc(s.name)}</b><br><small>${s.optional?'Facultatif · ':''}${s.kind==='strength'?'Charges, répétitions, RPE':s.kind==='pushups'?'Séries et récupération':s.kind==='bike'?'20 minutes':s.kind==='knee'?'Stabilité et renforcement':'Suivi de séance'}</small></span><span>${status(s,date)||'›'}</span></button>`).join('')||'<p>Repos.</p>'}<div class="notice">Douleur persistante au genou ou au bras : réduis la charge et fais évaluer les symptômes. Le WOD remplace une séance, il ne s’ajoute pas à une semaine déjà fatigante.</div>`}function renderWeek(){const m=isoOf(monday(date));return `<div class="row"><button data-shift="-7">‹</button><b>Semaine du ${m.split('-').reverse().join('/')}</b><button data-shift="7">›</button></div>${DAYS.map((n,i)=>{const d=plus(m,i),list=all(d);return `<div class="card"><div class="row"><b>${n} ${d.slice(8)}</b><button data-date="${d}">Ouvrir</button></div>${list.map(s=>`<div class="mini" style="padding:5px 0">${get(s.id,d).done?'✓ ':'○ '}${esc(s.name)}</div>`).join('')}</div>`}).join('')}`}
 function currentEx(id,i){const base=EX[id]?.[i];if(!base)return null;const override=data.programOverrides?.[id+'|'+i];return override? [override.name||base[0],override.description||base[1],Number(override.sets)||base[2],override.kg??base[3],Number(override.reps)||base[4],Number(override.rest??base[5])]:base}
 function activeEx(id){return (EX[id]||[]).map((_,i)=>currentEx(id,i)).filter(Boolean)}
 function formInput(label,key,val,type='number',extra=''){return `<label>${label}<input data-field="${key}" type="${type}" ${type==='number'?'step="any"':''} value="${esc(val??'')}" ${extra}></label>`}function renderSession(){const s=sessions.find(x=>x.id===openId),v=get(s.id,date);let html=`<button data-back="1">← Retour</button><div class="card"><h2>${esc(s.name)}</h2><small>${date} · ${s.optional?'Facultatif':'Prévu'}</small>`;if(s.kind==='strength'){html+=`<p class="mini">Note chaque série réellement effectuée. Les charges proposées sont indicatives et doivent rester sans douleur.</p>`;activeEx(s.id).forEach((ex,i)=>{let sets=v.sets?.[i]||[];html+=`<div class="exercise"><div class="row"><b>${esc(ex[0])}</b><button data-timer="${data.restPrefs[s.id+'|'+i]??(date==='2026-10-12'&&s.id==='push'&&i===0?120:ex[5])}">⏱ Démarrer</button></div><p class="mini">${esc(ex[1])}</p><div class="row"><small>Repos conseillé : ${ex[5]} s</small><label style="width:130px">Mon repos (s)<input type="number" min="0" max="1200" step="15" data-restpref="${s.id}|${i}" value="${data.restPrefs[s.id+'|'+i]??(date==='2026-10-12'&&s.id==='push'&&i===0?120:ex[5])}"></label></div>${v.finishedExercises?.[i]?'<p class="ok">✓ Exercice terminé · Réouvrir pour modifier</p>':Array.from({length:ex[2]+(v.extraSets?.[i]||0)},(_,j)=>{let a=sets[j]||{};return `<div class="setgrid">${formInput('Série '+(j+1)+' · kg',`sets.${i}.${j}.kg`,a.kg??(j<ex[2]?ex[3]:''))}${formInput('Répétitions',`sets.${i}.${j}.reps`,a.reps??(j<ex[2]?ex[4]:''))}${formInput('RPE',`sets.${i}.${j}.rpe`,a.rpe??'')}</div>`}).join('')}<div class="actions"><button data-addset="${i}">＋ Ajouter une série</button><button data-finishex="${i}">${v.finishedExercises?.[i]?'↶ Réouvrir':'✓ Fait'}</button></div></div>`})}else if(s.kind==='pushups'){const plan=pushPlan(s.id,date);html+=`<p class="mini">Cible : ${plan.join(' / ')} · 2 min de repos. N'augmente que si les séries restent propres et bien tolérées.</p>`+plan.map((n,i)=>`<div class="row card"><b>Série ${i+1} · cible ${n}</b><div style="width:100px">${formInput('Réalisées',`push.${i}`,v.push?.[i]??n)}</div><button data-timer="120">⏱</button></div>`).join('')}else if(s.kind==='bike'){html+=`<p class="mini">${s.id==='bike1'?'Endurance facile, RPE 3–4/10':s.id==='bike2'?'Endurance facile les 2 premières semaines, puis 5 min faciles + 5 × (1 min soutenue / 1 min facile) + 5 min faciles si genou OK':'Endurance régulière RPE 4–5/10'}</p><div class="grid">${formInput('Durée (min)','minutes',v.minutes??20)}${formInput('Distance (m)','distance',v.distance)}${formInput('Watts moyens','watts',v.watts)}${formInput('Cadence moyenne (RPM)','rpm',v.rpm)}${formInput('RPE /10','effort',v.effort)}</div>`}else{const list=s.kind==='mobility'?MOB:s.kind==='knee'?[['Split squat assisté','2 × 8/jambe'],['Équilibre sur coussin','2 × 30 s/jambe'],['Isométrie quadriceps','3 × 30 s']]:[['BikeErg','10 calories'],['Rowing TRX','8 répétitions'],['Pompes','8 répétitions'],['Squat banc haut (si toléré)','8 répétitions'],['Dead bug','10 alternées']];html+=s.kind==='wod'?formInput('Tours réalisés','rounds',v.rounds):'';html+=list.map((x,i)=>`<label class="card" style="display:flex;align-items:center;gap:12px"><input type="checkbox" data-check="${i}" ${v.checks?.[i]?'checked':''} style="width:22px;min-height:22px;margin:0"><span><b>${esc(x[0])}</b><br><small>${esc(x[1])}</small></span></label>`).join('')}
 html+=`<div class="grid">${formInput('Douleur genou /10','knee',v.knee)}${formInput('Douleur bras /10','arm',v.arm)}${formInput('Fatigue /10','fatigue',v.fatigue)}${formInput('RPE séance /10','sessionRpe',v.sessionRpe)}</div><label>Notes / sensations<textarea data-field="notes">${esc(v.notes||'')}</textarea></label><button class="primary" style="width:100%;margin-top:12px" data-save="1">${v.done?'Mettre à jour la séance terminée':'✓ Terminer la séance'}</button><button style="width:100%;margin-top:8px" data-unfinish="1">Marquer comme non terminée</button></div>`;return html}
 function trend(values,title,suffix=''){if(!values.length)return `<div class="card"><b>${title}</b><p class="muted">Aucune donnée pour le moment.</p></div>`;let nums=values.map(x=>x.v),min=Math.min(...nums),max=Math.max(...nums);if(max===min){max+=1;min-=1}const points=values.map((x,i)=>`${22+i*290/Math.max(1,values.length-1)},${120-(x.v-min)/(max-min)*95}`).join(' ');return `<div class="card"><b>${title}</b><svg viewBox="0 0 335 145" aria-label="Progression ${title}"><line x1="22" y1="120" x2="320" y2="120" stroke="#666971"/><polyline points="${points}" stroke="#e8a061" stroke-width="3" fill="none"/>${values.map((x,i)=>`<circle cx="${22+i*290/Math.max(1,values.length-1)}" cy="${120-(x.v-min)/(max-min)*95}" r="4" fill="#e8a061"/>`).join('')}</svg><small>Début : ${nums[0]}${suffix} · Dernier : ${nums.at(-1)}${suffix}</small></div>`}
-function renderProgress(){let items=Object.entries(data.entries).filter(([k,v])=>v.done).sort((a,b)=>a[0].localeCompare(b[0]));let bench=[],bike=[],rpm=[],push=[];items.forEach(([k,v])=>{let [d,id]=k.split('|');if(id==='push'&&v.sets?.[0]?.[0]){let a=v.sets[0][0];if(+a.kg>0&&+a.reps>0)bench.push({d,v:+a.kg*+a.reps})}if(id.startsWith('bike')&&+v.watts>0)bike.push({d,v:+v.watts});if(id.startsWith('bike')&&+v.rpm>0)rpm.push({d,v:+v.rpm});if(id==='pompesA'&&v.push)push.push({d,v:v.push.reduce((a,b)=>a+(+b||0),0)})});return renderSuggestions()+`<div class="grid"><div class="card"><h2>${items.length}</h2><small>Séances enregistrées</small></div><div class="card"><h2>65</h2><small>Record pompes initial</small></div></div>${trend(bench,'Développé couché · volume première série',' kg·reps')}${trend(push,'Pompes A · volume total',' reps')}${trend(bike,'BikeErg · watts moyens',' W')}${trend(rpm,'BikeErg · cadence moyenne',' RPM')}<h2>Historique</h2>${items.slice(-25).reverse().map(([k,v])=>`<button class="card row" style="width:100%;text-align:left" data-history="${esc(k)}"><span><b>${esc(sessions.find(s=>s.id===k.split('|')[1])?.name||k)}</b><br><small>${k.split('|')[0]} · fatigue ${esc(v.fatigue||'–')}/10 · genou ${esc(v.knee||'–')}/10</small></span><span>›</span></button>`).join('')||'<p class="muted">Aucune séance enregistrée.</p>'}<div class="card"><b>Référence du 12 octobre</b><p class="mini">Développé couché : 70 kg × 8/8/8/8, RPE 7 sur la dernière série. Record de pompes : 65.</p></div>`}
+function renderProgress(){let items=Object.entries(data.entries).filter(([k,v])=>v.done).sort((a,b)=>a[0].localeCompare(b[0]));let bench=[],bike=[],rpm=[],push=[];items.forEach(([k,v])=>{let [d,id]=k.split('|');if(id==='push'&&v.sets?.[0]?.[0]){let a=v.sets[0][0];if(+a.kg>0&&+a.reps>0)bench.push({d,v:+a.kg*+a.reps})}if(id.startsWith('bike')&&+v.watts>0)bike.push({d,v:+v.watts});if(id.startsWith('bike')&&+v.rpm>0)rpm.push({d,v:+v.rpm});if(id==='pompesA'&&v.push)push.push({d,v:v.push.reduce((a,b)=>a+(+b||0),0)})});return safeSuggestions()+`<div class="grid"><div class="card"><h2>${items.length}</h2><small>Séances enregistrées</small></div><div class="card"><h2>65</h2><small>Record pompes initial</small></div></div>${trend(bench,'Développé couché · volume première série',' kg·reps')}${trend(push,'Pompes A · volume total',' reps')}${trend(bike,'BikeErg · watts moyens',' W')}${trend(rpm,'BikeErg · cadence moyenne',' RPM')}<h2>Historique</h2>${items.slice(-25).reverse().map(([k,v])=>`<button class="card row" style="width:100%;text-align:left" data-history="${esc(k)}"><span><b>${esc(sessions.find(s=>s.id===k.split('|')[1])?.name||k)}</b><br><small>${k.split('|')[0]} · fatigue ${esc(v.fatigue||'–')}/10 · genou ${esc(v.knee||'–')}/10</small></span><span>›</span></button>`).join('')||'<p class="muted">Aucune séance enregistrée.</p>'}<div class="card"><b>Référence du 12 octobre</b><p class="mini">Développé couché : 70 kg × 8/8/8/8, RPE 7 sur la dernière série. Record de pompes : 65.</p></div>`}
 function exportJSON(){return JSON.stringify({app:'Mon Training',version:5,exportDate:new Date().toISOString(),...data},null,2)}
 const LEXICON=[
  ['Développé couché','Pectoraux, triceps','Pieds stables, omoplates serrées, descente contrôlée, pousse sans rebond.','Évite de décoller les épaules et de rebondir sur la poitrine.'],
@@ -190,7 +190,7 @@ startTimer=function(sec){
  try{audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume()}catch(e){}
  timerEnd=Date.now()+Math.max(0,sec)*1000;stableTimerDone=false;
  const t=document.querySelector('#timer');t.className='timer show large';
- t.innerHTML=`<div class="timer-title" id="timerTitle">RÉCUPÉRATION</div><div id="stableClock" class="stable-clock">00:00</div><div class="timer-actions"><button data-addtime="-30">−30 s</button><button data-addtime="30">+30 s</button><button id="soundToggle" data-toggle-sound="1">${data.soundEnabled?'Son activé':'Muet'}</button><button data-stoptimer="1">Fermer</button></div>`;
+ t.innerHTML=`<div class="timer-title" id="timerTitle">RÉCUPÉRATION</div><div id="stableClock" class="stable-clock">00:00</div><div class="timer-actions"><button data-addtime="-30">−30 s</button><button data-addtime="30">+30 s</button><button id="soundToggle" data-toggle-sound="1">${data.soundEnabled?'Son activé':'Muet'}</button><button data-stoptimer="1">Arrêter et fermer</button></div>`;
  const tick=()=>{if(!t.classList.contains('show')){clearInterval(stableTimerHandle);return}const left=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));const clock=document.querySelector('#stableClock');if(clock)clock.textContent=`${String(Math.floor(left/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}`;if(left===0&&!stableTimerDone){stableTimerDone=true;clearInterval(stableTimerHandle);threeBeeps();t.classList.remove('large');const title=document.querySelector('#timerTitle');if(title)title.textContent='RÉCUPÉRATION TERMINÉE'}};
  tick();stableTimerHandle=setInterval(tick,200);
 };
@@ -211,10 +211,263 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if(b.dataset.guidedPrev){e.stopImmediatePropagation();guidedStep=Math.max(0,guidedStep-1);showGuidedStep();return}
  if(b.dataset.stopGuided){e.stopImmediatePropagation();clearInterval(guidedInterval);document.querySelector('#timer').className='timer';return}
  if(b.dataset.toggleSound){e.stopImmediatePropagation();data.soundEnabled=!data.soundEnabled;persist();b.textContent=data.soundEnabled?'Son activé':'Muet';return}
- if(b.dataset.stoptimer){clearInterval(stableTimerHandle);clearInterval(guidedInterval)}
+ if(b.dataset.stoptimer){
+  // Fermeture manuelle : supprimer AUSSI la classe large, dont le CSS force display:flex.
+  e.preventDefault();e.stopImmediatePropagation();
+  clearInterval(timerInterval);clearInterval(stableTimerHandle);clearInterval(guidedInterval);
+  stableTimerHandle=null;timerEnd=0;stableTimerDone=true;
+  const timerEl=document.querySelector('#timer');
+  timerEl.className='timer';timerEl.innerHTML='';
+  return;
+ }
 },true);
 const fixesStyle=document.createElement('style');fixesStyle.textContent=`.timer.large{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:45vh}.timer-title{font-size:15px;letter-spacing:.05em;text-align:center;font-weight:750}.stable-clock{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:clamp(68px,15vw,105px);line-height:1.1;min-width:5.6ch;text-align:center;white-space:nowrap}.timer-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}.setgrid:has(select[data-band]){grid-template-columns:1fr 1fr 1fr}.setgrid:not(:has(label:first-child)){grid-template-columns:1fr 1fr}.exercise .setgrid{align-items:end}.timer:not(.large){flex-wrap:wrap;justify-content:center}`;document.head.append(fixesStyle);
 
+const closeTimerStyle=document.createElement('style');closeTimerStyle.textContent='.timer:not(.show){display:none!important}';document.head.append(closeTimerStyle);
 const motivationStyle=document.createElement('style');motivationStyle.textContent=`.motivation-banner{border-left:4px solid var(--accent);background:linear-gradient(120deg,#35291e,#1d2025)}.motivation-banner small{color:var(--accent);font-weight:800;letter-spacing:.09em}.motivation-banner p{font-size:17px;font-weight:650;margin:9px 0 2px}`;document.head.append(motivationStyle);
+
+// V5.3.3 — accueil direct, historique réel et pompes conditionnelles.
+// On ne modifie pas la clé locale : conservation de l'historique iPhone.
+data.pushupLevels ||= {};
+data.backupReminder ||= {lastAcknowledged:null};
+const initialPushTargets={pompesA:[35,32,29,26,23],pompesB:[25,25,25,25],pompesC:[35,35,35],pompesD:[20,20,20]};
+function pushHistory(id,beforeDate){return Object.entries(data.entries).filter(([k,v])=>k.endsWith('|'+id)&&k.slice(0,10)<beforeDate&&v.done&&Array.isArray(v.push)).sort((a,b)=>a[0].localeCompare(b[0]));}
+function pushTargets(id,d){
+ const base=initialPushTargets[id]||[20,20,20],history=pushHistory(id,d);
+ // Trois séances validées avec technique propre et >=3 reps en réserve avant une proposition de palier.
+ let level=0,streak=0;
+ for(const [k,v] of history){
+   const target=base.map(n=>n+level*2);
+   const complete=target.every((n,i)=>Number(v.push?.[i])>=n);
+   const reserve=Number(v.pushReserve);
+   const good=complete&&v.pushQuality==='propre'&&reserve>=3&&Number(v.arm||0)<3&&Number(v.fatigue||0)<8;
+   streak=good?streak+1:0;
+   if(streak>=3){level++;streak=0}
+ }
+ const targets=base.map(n=>n+level*2);
+ return {targets,level,streak,remaining:3-streak};
+}
+pushPlan=function(id,d){return pushTargets(id,d).targets};
+function lastExercise(id,i,beforeDate){
+ const records=Object.entries(data.entries).filter(([k,v])=>k.endsWith('|'+id)&&k.slice(0,10)<beforeDate&&v.done&&v.sets?.[i]?.some(r=>Number(r.reps)>0)).sort((a,b)=>a[0].localeCompare(b[0]));
+ return records.length?{date:records.at(-1)[0].slice(0,10),entry:records.at(-1)[1],rows:records.at(-1)[1].sets[i]}:null;
+}
+function suggestedExercise(id,i){
+ const ex=currentEx(id,i),prev=lastExercise(id,i,plus(todayISO(),1));if(!ex||!prev)return null;
+ const rows=prev.rows.slice(0,Number(ex[2]));if(rows.length<Number(ex[2]))return null;
+ const kg=rows.map(r=>Number(r.kg)),reps=rows.map(r=>Number(r.reps));
+ if(kg.some(x=>!Number.isFinite(x)||x<=0)||reps.some(x=>!Number.isFinite(x)||x<=0))return null;
+ const load=kg[0],same=kg.every(x=>Math.abs(x-load)<.001),rpe=Number(rows.at(-1).rpe||prev.entry.sessionRpe||0);
+ const pain=Math.max(Number(prev.entry.arm||0),Number(prev.entry.knee||0));
+ if(!same)return {prev,note:'Charges variables : vérifie tes séries avant de progresser.',next:null};
+ if(pain>=3||rpe>=9)return {prev,note:'Maintenir la charge et privilégier une exécution sans douleur.',next:null};
+ if(!rpe)return {prev,note:'RPE non renseigné : progression à confirmer.',next:null};
+ const min=Math.min(...reps),max=Math.max(...reps),atTop=min>=Number(ex[4]);
+ const increment=/haltère/i.test(ex[0])?2:2.5;
+ const next=atTop&&rpe<=8?{kg:load+increment,reps:Math.max(8,Number(ex[4])-2)}:{kg:load,reps:min+1};
+ return {prev,next,note:atTop&&rpe<=8?'Palier de charge envisageable si matériel disponible et aucune douleur.':'Progression prudente des répétitions.'};
+}
+progressProposal=function(key){
+ const [id,raw]=key.split('|'),i=Number(raw),ex=currentEx(id,i),res=suggestedExercise(id,i);
+ if(!ex||!res?.next)return null;
+ const {prev,next,note}=res;
+ const rows=prev.rows.slice(0,ex[2]);const actual=rows.map(r=>`${r.kg} kg × ${r.reps}`).join(' · ');
+ const override={name:ex[0],description:ex[1],sets:ex[2],kg:next.kg,reps:next.reps,rest:ex[5]};
+ return {override,date:prev.date,description:`${ex[0]} — Dernière performance (${prev.date}) : ${actual}. Objectif proposé : ${next.kg} kg × ${ex[2]} × ${next.reps}. ${note}`};
+};
+const previousV533Today=renderToday;
+renderToday=function(){
+ const h=previousV533Today();const today=all(date),primary=today.find(s=>!get(s.id,date).done&&!s.optional)||today.find(s=>!get(s.id,date).done)||today[0];
+ const resume=primary&&get(primary.id,date).updatedAt&&!get(primary.id,date).done;
+ const hero=primary?`<div class="card today-start"><small>TA SÉANCE DU JOUR</small><h2>${esc(primary.name)}</h2><p class="mini">${primary.kind==='strength'?`${activeEx(primary.id).length} exercices · ${activeEx(primary.id).reduce((a,x)=>a+x[2],0)} séries`:primary.kind==='pushups'?`Objectif : ${pushPlan(primary.id,date).join(' / ')} pompes`:'Séance adaptée à ton planning'}</p><button class="primary start-button" data-open="${primary.id}">${resume?'↪ REPRENDRE MA SÉANCE':get(primary.id,date).done?'VOIR MA SÉANCE':'▶ DÉMARRER MA SÉANCE'}</button></div>`:`<div class="card today-start"><h2>Repos aujourd’hui</h2><p class="mini">Récupération et mobilité si besoin.</p></div>`;
+ return hero+`<details class="today-details"><summary>Calendrier et autres séances</summary>${h}</details>`;
+};
+const previousV533Session=renderSession;
+renderSession=function(){
+ let h=previousV533Session(),id=openId,s=sessions.find(x=>x.id===id);
+ if(s?.kind==='strength'){
+   const exs=activeEx(id);let pieces=h.split('<div class="exercise">');
+   for(let i=1;i<pieces.length;i++){
+     const ex=exs[i-1],prev=lastExercise(id,i-1,date);if(!ex)continue;
+     const summary=prev?`<details class="last-result"><summary>Dernière performance · ${prev.date}</summary><p class="mini">${prev.rows.map((r,j)=>`S${j+1} : ${esc(r.kg||'—')} kg × ${esc(r.reps||'—')} · RPE ${esc(r.rpe||'—')}`).join('<br>')}</p></details>`:'<p class="mini">Aucun historique pour cet exercice.</p>';
+     pieces[i]=pieces[i].replace('</p>', '</p>'+summary);
+   }
+   h=pieces.join('<div class="exercise">');
+ }
+ if(s?.kind==='pushups'){
+   const plan=pushTargets(id,date);
+   const note=`<div class="card push-coach"><b>Progression vers 100 pompes consécutives</b><p class="mini">Palier actuel : ${plan.targets.join(' / ')}. ${plan.streak}/3 séances propres validées pour le prochain palier. L’augmentation dépend des résultats enregistrés, pas du calendrier.</p><label>Qualité de la séance<select data-field="pushQuality"><option value="" >À renseigner</option><option value="propre" ${get(id,date).pushQuality==='propre'?'selected':''}>Toutes les répétitions propres</option><option value="difficile" ${get(id,date).pushQuality==='difficile'?'selected':''}>Technique difficile</option><option value="echec" ${get(id,date).pushQuality==='echec'?'selected':''}>Échec / séries incomplètes</option></select></label><label>Répétitions en réserve en fin de séance<input type="number" min="0" max="15" step="1" data-field="pushReserve" value="${esc(get(id,date).pushReserve??'')}"></label><p class="mini">Après trois séances réussies avec au moins 3 répétitions en réserve, l’application propose +2 répétitions par série. Tu peux conserver le niveau si nécessaire.</p></div>`;
+   h=h.replace('<div class="grid">',note+'<div class="grid">');
+ }
+ return h;
+};
+const previousV533Settings=renderSettings;
+renderSettings=function(){
+ const h=previousV533Settings();return `<div class="card"><b>Sécurité des données</b><p class="mini">Tes séances restent stockées sur cet appareil. Exporte un fichier JSON au moins une fois par semaine et avant chaque mise à jour.</p><button data-backup-ack="1">J’ai sauvegardé mes données aujourd’hui</button><p class="mini">Dernière sauvegarde déclarée : ${esc(data.backupReminder.lastAcknowledged||'non renseignée')}</p></div>`+h;
+};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-backup-ack]');if(!b)return;e.stopImmediatePropagation();data.backupReminder.lastAcknowledged=todayISO();persist();render()},true);
+const v533Style=document.createElement('style');v533Style.textContent=`.today-start{border:1px solid #c88c58;background:linear-gradient(145deg,#3d2b21,#1d2025);padding:24px 18px}.today-start>small{color:var(--accent);font-weight:800;letter-spacing:.08em}.today-start h2{font-size:25px;margin:12px 0}.start-button{width:100%;min-height:62px;font-size:18px;font-weight:800}.today-details{margin-top:15px}.today-details>summary{cursor:pointer;padding:15px;background:#25282d;border-radius:12px;font-weight:700}.last-result{margin:9px 0;padding:9px 12px;border-radius:10px;background:#242a2c}.last-result summary{font-size:13px;cursor:pointer;color:#e8b486}.push-coach{border-left:3px solid var(--accent)}`;document.head.append(v533Style);
+
+
+// V5.3.3.1 — Navigation robuste et correction de date d'une séance terminée.
+function safeSuggestions(){try{return renderSuggestions()}catch(err){console.error('Progression guidée :',err);return '<div class="card"><h3>Progression guidée</h3><p class="mini">Recommandations temporairement indisponibles. Ton historique reste accessible.</p></div>'}}
+const renderProgressOriginal=renderProgress;
+renderProgress=function(){try{return renderProgressOriginal()}catch(err){console.error('Affichage Progrès :',err);return `<div class="card"><h2>Historique</h2><p class="mini">Une statistique ne peut pas être affichée. Les séances restent accessibles.</p>${Object.entries(data.entries||{}).filter(([k,v])=>v&&v.done).sort((a,b)=>b[0].localeCompare(a[0])).map(([k,v])=>`<button class="card row" style="width:100%" data-history="${esc(k)}">${esc(k)} — ${esc(sessions.find(x=>x.id===k.split('|')[1])?.name||'Séance')}</button>`).join('')}</div>`}};
+const sessionBeforeDateCorrection=renderSession;
+renderSession=function(){const html=sessionBeforeDateCorrection();const record=get(openId,date);if(!record.done)return html;const panel=`<div class="card"><h3>Corriger la date de cette séance terminée</h3><p class="mini">Déplace les résultats enregistrés vers le jour réel d'entraînement, sans modifier les séries.</p><label>Date réelle<input type="date" id="completedDate" value="${date}"></label><button data-move-completed="1">Enregistrer la nouvelle date</button></div>`;return html.replace('<button data-back="1">',panel+'<button data-back="1">')};
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-move-completed]');if(!b)return;e.stopImmediatePropagation();
+ if(!openId)return;const newDate=document.querySelector('#completedDate')?.value;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(newDate||'')){alert('Choisis une date valide.');return}
+ if(newDate===date){alert('La date est déjà correcte.');return}
+ const oldDate=date,id=openId,from=eid(id,oldDate),to=eid(id,newDate);
+ if(!data.entries[from]?.done){alert('Seule une séance terminée peut être déplacée.');return}
+ if(data.entries[to]){alert('Une séance de ce type existe déjà à cette date. Aucun résultat n’a été remplacé.');return}
+ if(!confirm(`Déplacer la séance du ${oldDate} au ${newDate} ? Toutes les séries et notes seront conservées.`))return;
+ const v=structuredClone(data.entries[from]);data.entries[to]=v;delete data.entries[from];
+ const oldIds=scheduledIds(oldDate),newIds=scheduledIds(newDate);
+ data.schedule[oldDate]=oldIds.filter(x=>x!==id);
+ data.schedule[newDate]=newIds.includes(id)?newIds:[...newIds,id];
+ date=newDate;openId=null;view='progress';persist();render();
+},true);
+
+
+// V5.3.3.3 — Suggestions résilientes : une entrée historique incomplète ne masque plus toutes les recommandations.
+function validExerciseHistory(id,i){
+ const entries=data.entries&&typeof data.entries==='object'?data.entries:{};
+ return Object.entries(entries).filter(([key,v])=>{
+   if(!v||typeof v!=='object'||!v.done||!key.endsWith('|'+id))return false;
+   return Array.isArray(v.sets)&&Array.isArray(v.sets[i])&&v.sets[i].some(r=>r&&Number(r.reps)>0);
+ }).sort((a,b)=>a[0].localeCompare(b[0]));
+}
+lastExercise=function(id,i,beforeDate){
+ const records=validExerciseHistory(id,i).filter(([key])=>key.slice(0,10)<beforeDate);
+ if(!records.length)return null;
+ const [key,entry]=records.at(-1);
+ return {date:key.slice(0,10),entry,rows:entry.sets[i].filter(r=>r&&typeof r==='object')};
+};
+function reliableSuggestions(){
+ const decisions=data.progressDecisions&&typeof data.progressDecisions==='object'?data.progressDecisions:{};
+ const proposals=[],errors=[];
+ for(const [id,exercises] of Object.entries(EX)){
+  if(!Array.isArray(exercises))continue;
+  for(let i=0;i<exercises.length;i++){
+   const key=id+'|'+i;
+   try{
+    const p=progressProposal(key);
+    if(p&&decisions[key]?.date!==todayISO())proposals.push({key,p});
+   }catch(error){console.warn('Suggestion ignorée pour '+key,error);errors.push(key)}
+  }
+ }
+ const elapsed=(Date.parse(todayISO()+'T12:00:00')-Date.parse(String(data.cycleStart||'2026-10-12')+'T12:00:00'))/86400000;
+ const cards=proposals.slice(0,5).map(({key,p})=>`<div class="exercise"><b>${esc(p.description)}</b><p class="mini">Dernière séance : ${esc(p.date)}</p><div class="actions"><button class="primary" data-accept-progress="${esc(key)}">Accepter</button><button data-reject-progress="${esc(key)}">Plus tard</button></div></div>`).join('');
+ return `<div class="card suggestion"><h3>Progression guidée</h3><p class="mini">Basée sur tes performances enregistrées. Une proposition reste facultative et doit être validée.</p>${cards||'<p class="mini">Aucune augmentation conseillée actuellement. Continue à enregistrer tes séries et ton RPE.</p>'}${errors.length?`<p class="notice">${errors.length} exercice(s) n’ont pas pu être analysés. Les autres recommandations restent disponibles.</p>`:''}${Number.isFinite(elapsed)&&elapsed>=42?'<p class="notice">Cycle de 6 à 8 semaines : un bilan peut être utile.</p>':''}</div>`;
+}
+renderSuggestions=reliableSuggestions;
+// Ne pas conserver une proposition périmée entre son affichage et sa validation.
+const originalProgressProposal=progressProposal;
+progressProposal=function(key){try{return originalProgressProposal(key)}catch(err){console.warn('Proposition invalide : '+key,err);return null}};
+
+
+// V5.3.3.3 — validation explicite des pompes, sans réussite fictive.
+// Chaque répétition saisie reste un brouillon jusqu'au clic « Série validée ».
+const previousPushRender=renderSession;
+renderSession=function(){
+ let h=previousPushRender();
+ const s=sessions.find(x=>x.id===openId);
+ if(s?.kind!=='pushups')return h;
+ const v=get(openId,date),targets=pushPlan(openId,date);
+ // Le formulaire historique conserve les mêmes data-field push.i pour les sauvegardes JSON.
+ const rows=targets.map((target,i)=>{
+  const done=v.pushValidated?.[i]===true;
+  const saved=done?(v.push?.[i]??target):'';
+  return `<div class="card push-series ${done?'push-complete':''}" data-push-row="${i}"><div class="push-series-top"><div><b>Série ${i+1}</b><br><small>Objectif : ${target} pompes</small></div><span class="push-state">${done?'✓ Validée':'À effectuer'}</span></div><div class="push-series-actions"><label>Réalisées<input type="number" inputmode="numeric" min="0" max="250" step="1" data-field="push.${i}" value="${esc(saved)}" placeholder="${target}"></label><button type="button" class="${done?'done':'primary'}" data-confirm-push="${i}">${done?'↶ Modifier':'✓ Série validée'}</button></div><p class="mini push-hint">${done?'Série enregistrée. Tu peux la corriger.':'Un appui valide l’objectif ; saisis un autre nombre si tu as fait moins.'}</p></div>`;
+ }).join('');
+ // Supprimer UNIQUEMENT les anciennes lignes, puis injecter les nouvelles cartes
+ // avant le bloc de ressenti. Ne jamais supprimer les nouvelles cartes générées.
+ h=h.replace(/<div class="row card"><b>Série \d+ · cible \d+<\/b>[\s\S]*?<button data-timer="120">⏱<\/button><\/div>/g,'');
+ const marker='<div class="card push-coach">';
+ if(h.includes(marker)) h=h.replace(marker,rows+marker);
+ else {
+   const footer='<div class="grid">';
+   if(h.includes(footer))h=h.replace(footer,rows+footer);
+   else throw new Error('Emplacement des séries de pompes introuvable');
+ }
+ // Hide complexity unless requested; keep all data-field values in the DOM for capture().
+ h=h.replace('<div class="card push-coach">','<div class="card push-coach">');
+ return h;
+};
+// Capture-phase handlers run before the generic application click handler.
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-confirm-push]');if(!b)return;
+ e.preventDefault();e.stopImmediatePropagation();
+ if(!openId||sessions.find(x=>x.id===openId)?.kind!=='pushups')return;
+ const i=Number(b.dataset.confirmPush),row=b.closest('[data-push-row]');
+ const input=row?.querySelector(`[data-field="push.${i}"]`);
+ if(!input)return;
+ const v=capture();v.pushValidated=Array.isArray(v.pushValidated)?v.pushValidated:[];
+ const wasValid=v.pushValidated[i]===true;
+ if(wasValid){v.pushValidated[i]=false;v.push[i]='';set(openId,date,{...v,updatedAt:new Date().toISOString()});render();return}
+ const raw=input.value.trim();const target=pushPlan(openId,date)[i];
+ const reps=raw===''?target:Number(raw);
+ if(!Number.isInteger(reps)||reps<0||reps>250){alert('Indique un nombre de répétitions entre 0 et 250.');return}
+ v.push[i]=String(reps);v.pushValidated[i]=true;v.updatedAt=new Date().toISOString();set(openId,date,v);
+ render();if(i<pushPlan(openId,date).length-1)startTimer(120);
+},true);
+// Modifier les répétitions d'une série validée annule sa validation.
+document.addEventListener('input',e=>{
+ const input=e.target.closest('[data-push-row] input[data-field]');if(!input)return;
+ const i=Number(input.closest('[data-push-row]').dataset.pushRow);
+ if(!openId||sessions.find(x=>x.id===openId)?.kind!=='pushups')return;
+ const v=get(openId,date);
+ if(v.pushValidated?.[i]){
+  const next={...v,pushValidated:[...v.pushValidated]};next.pushValidated[i]=false;set(openId,date,next);
+  const row=input.closest('[data-push-row]');row.classList.remove('push-complete');
+  row.querySelector('.push-state').textContent='À confirmer';
+  const btn=row.querySelector('[data-confirm-push]');btn.textContent='✓ Série validée';btn.classList.remove('done');btn.classList.add('primary');
+ }
+},true);
+// Prevent accidental completion of new pompes sessions if any series was not confirmed.
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-save]');if(!b||!openId)return;
+ const s=sessions.find(x=>x.id===openId);if(s?.kind!=='pushups')return;
+ const v=capture(),targets=pushPlan(openId,date);
+ // Old completed entries may lack pushValidated; they remain readable and editable.
+ if(!Array.isArray(v.pushValidated)||targets.some((_,i)=>v.pushValidated[i]!==true)){
+  e.preventDefault();e.stopImmediatePropagation();
+  alert('Valide chaque série de pompes avant de terminer la séance. Les séries non validées ne sont pas comptées.');return;
+ }
+ if(!v.pushQuality){e.preventDefault();e.stopImmediatePropagation();alert('Indique comment s’est passée la séance avant de la terminer.');return}
+ if(v.pushQuality==='propre'&&(v.pushReserve===''||v.pushReserve===undefined)){
+  e.preventDefault();e.stopImmediatePropagation();alert('Indique les répétitions en réserve pour évaluer la progression.');return;
+ }
+},true);
+// Les anciens historiques sans validation explicite ne sont jamais considérés comme trois réussites nouvelles.
+const originalPushTargets=pushTargets;
+pushTargets=function(id,d){
+ const base=initialPushTargets[id]||[20,20,20],history=pushHistory(id,d);
+ let level=0,streak=0;
+ for(const [key,v] of history){
+  const targets=base.map(n=>n+level*2);
+  const confirmed=Array.isArray(v.pushValidated)&&targets.every((_,i)=>v.pushValidated[i]===true);
+  const complete=confirmed&&targets.every((n,i)=>Number(v.push?.[i])>=n);
+  const reserve=v.pushReserve!==''&&v.pushReserve!=null?Number(v.pushReserve):NaN;
+  const good=complete&&v.pushQuality==='propre'&&Number.isFinite(reserve)&&reserve>=3&&Number(v.arm||0)<3&&Number(v.fatigue||0)<8;
+  streak=good?streak+1:0;
+  if(streak>=3){level++;streak=0}
+ }
+ return {targets:base.map(n=>n+level*2),level,streak,remaining:3-streak};
+};
+// Les recommandations restent compactes et les justifications consultables à la demande.
+const previousCompactSuggestions=renderSuggestions;
+renderSuggestions=function(){
+ let html=previousCompactSuggestions();
+ return html.replace(/<div class="exercise"><b>([\s\S]*?)<\/b><p class="mini">Dernière séance : ([^<]*)<\/p><div class="actions">([\s\S]*?)<\/div><\/div>/g,(_whole,description,d,actions)=>{
+  const label=description.split(' — Dernière performance')[0];
+  return `<div class="coach-item"><b>${label}</b><details><summary>Voir dernière performance et conseil</summary><p class="mini">${description}</p><p class="mini">Dernière séance : ${d}</p></details><div class="actions">${actions}</div></div>`;
+ });
+};
+const v5333css=document.createElement('style');v5333css.textContent=`.push-series{padding:14px;margin:10px 0}.push-series-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.push-state{font-size:12px;color:var(--muted);white-space:nowrap}.push-complete{border-color:#67866e}.push-complete .push-state{color:#9bd3a3}.push-series-actions{display:grid;grid-template-columns:1fr 1.6fr;align-items:end;gap:12px;margin-top:10px}.push-series-actions button{min-height:46px}.push-series-actions label{max-width:135px}.push-hint{margin:7px 0 0}.coach-item{padding:12px 0;border-top:1px solid var(--line)}.coach-item details{margin:7px 0}.coach-item summary{font-size:13px;color:var(--accent)}.coach-item .actions{margin-top:10px}@media(max-width:390px){.push-series-actions{grid-template-columns:1fr 1.5fr}}`;document.head.append(v5333css);
+
 render();
 </script><script>if('serviceWorker' in navigator && location.protocol==='https:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script></body></html>
