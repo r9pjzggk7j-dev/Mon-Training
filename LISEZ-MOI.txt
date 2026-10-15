@@ -1,9 +1,5 @@
-Mon Training — version iPhone (PWA)
+Mon Training V5.3.3.9e — TEST iPhone du signal sonore.
 
-1. Sauvegarder vos données de la version Mac en JSON.
-2. Publier uniquement les fichiers de ce dossier sur un hébergement HTTPS statique (ex. GitHub Pages).
-3. Sur iPhone, ouvrir le site avec Safari, Partager > Sur l’écran d’accueil > Ouvrir comme app web.
-4. Ouvrir l’application installée, importer la sauvegarde JSON et vérifier les séances.
-5. Tester l’enregistrement après fermeture et en mode avion.
+Signal de fin : trois bips renforcés, indicateur visuel vert et bouton « Tester le son ». Le son dépend du volume, du mode silencieux et des règles iOS.
 
-IMPORTANT : les données restent dans le stockage local de chaque appareil, elles ne sont pas synchronisées. Ne publiez JAMAIS votre fichier de sauvegarde JSON dans le dépôt public. Les sauvegardes manuelles restent nécessaires.
+Conserve la sauvegarde JSON et ne supprime pas la PWA existante. Tester sur Mac avant déploiement.

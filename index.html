@@ -134,7 +134,40 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if(b.dataset.resetday){e.stopImmediatePropagation();delete data.schedule[date];persist();render();return}
 },true);
 // Minuteur grand format + son optionnel. Le son dépend des restrictions iOS si écran verrouillé.
-let audioCtx=null;function threeBeeps(){if(!data.soundEnabled)return;try{audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();for(let i=0;i<3;i++){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),at=audioCtx.currentTime+i*.25;osc.frequency.value=850;gain.gain.setValueAtTime(.0001,at);gain.gain.exponentialRampToValueAtTime(.13,at+.015);gain.gain.exponentialRampToValueAtTime(.0001,at+.16);osc.connect(gain).connect(audioCtx.destination);osc.start(at);osc.stop(at+.17)}}catch(e){}}
+let audioCtx=null;
+// Le contexte audio est activé pendant un geste utilisateur (important pour Safari iOS).
+function unlockTimerAudio(){
+ try{
+  audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  // Impulsion inaudible pour initialiser le moteur audio sur iOS.
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  g.gain.value=0;o.connect(g);g.connect(audioCtx.destination);
+  o.start();o.stop(audioCtx.currentTime+.015);
+ }catch(e){}
+}
+function threeBeeps(){
+ if(!data.soundEnabled)return;
+ try{
+  unlockTimerAudio();
+  if(!audioCtx)return;
+  const base=audioCtx.currentTime+.025;
+  // Trois doubles tonalités, plus longues et plus présentes que le signal précédent.
+  for(let i=0;i<3;i++){
+   for(const hz of [740,1040]){
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain(),at=base+i*.34;
+    o.type='square';o.frequency.value=hz;
+    g.gain.setValueAtTime(.0001,at);
+    g.gain.linearRampToValueAtTime(.095,at+.025);
+    g.gain.setValueAtTime(.095,at+.19);
+    g.gain.exponentialRampToValueAtTime(.0001,at+.27);
+    o.connect(g);g.connect(audioCtx.destination);o.start(at);o.stop(at+.29);
+   }
+  }
+ }catch(e){}
+ // La vibration n'est pas disponible sur Safari iOS ; utilisée seulement si prise en charge.
+ try{if(navigator.vibrate)navigator.vibrate([160,100,160,100,220])}catch(e){}
+}
 const baseStartTimer=startTimer;
 startTimer=function(sec){try{audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume()}catch(e){}baseStartTimer(sec);const t=document.querySelector('#timer');t.classList.add('large');let already=false;const loop=()=>{if(!t.classList.contains('show'))return;const left=Math.ceil((timerEnd-Date.now())/1000);if(left<=0&&!already){already=true;threeBeeps();t.classList.remove('large')}else if(left>0)already=false;const sound=document.querySelector('#soundToggle');if(!sound){const btn=document.createElement('button');btn.id='soundToggle';btn.textContent=data.soundEnabled?'🔊 Son':'🔇 Muet';btn.onclick=()=>{data.soundEnabled=!data.soundEnabled;persist();btn.textContent=data.soundEnabled?'🔊 Son':'🔇 Muet'};t.append(btn)}requestAnimationFrame(()=>setTimeout(loop,150))};loop()};
 // Validation de série = départ automatique du repos. Le clic ne termine pas la séance.
@@ -187,11 +220,11 @@ document.addEventListener('change',e=>{if(e.target.dataset.band){data.bandColors
 let stableTimerHandle=null,stableTimerDone=false;
 startTimer=function(sec){
  clearInterval(timerInterval);clearInterval(stableTimerHandle);stopWarmup();
- try{audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume()}catch(e){}
+ unlockTimerAudio();
  timerEnd=Date.now()+Math.max(0,sec)*1000;stableTimerDone=false;
  const t=document.querySelector('#timer');t.className='timer show large';
- t.innerHTML=`<div class="timer-title" id="timerTitle">RÉCUPÉRATION</div><div id="stableClock" class="stable-clock">00:00</div><div class="timer-actions"><button data-addtime="-30">−30 s</button><button data-addtime="30">+30 s</button><button id="soundToggle" data-toggle-sound="1">${data.soundEnabled?'Son activé':'Muet'}</button><button data-stoptimer="1">Arrêter et fermer</button></div>`;
- const tick=()=>{if(!t.classList.contains('show')){clearInterval(stableTimerHandle);return}const left=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));const clock=document.querySelector('#stableClock');if(clock)clock.textContent=`${String(Math.floor(left/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}`;if(left===0&&!stableTimerDone){stableTimerDone=true;clearInterval(stableTimerHandle);threeBeeps();t.classList.remove('large');const title=document.querySelector('#timerTitle');if(title)title.textContent='RÉCUPÉRATION TERMINÉE'}};
+ t.innerHTML=`<div class="timer-title" id="timerTitle">RÉCUPÉRATION</div><div id="stableClock" class="stable-clock">00:00</div><div class="timer-actions"><button data-addtime="-30">−30 s</button><button data-addtime="30">+30 s</button><button id="soundToggle" data-toggle-sound="1">${data.soundEnabled?'Son activé':'Muet'}</button><button data-test-sound="1">▶ Tester le son</button><button data-stoptimer="1">Arrêter et fermer</button></div>`;
+ const tick=()=>{if(!t.classList.contains('show')){clearInterval(stableTimerHandle);return}const left=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));const clock=document.querySelector('#stableClock');if(clock)clock.textContent=`${String(Math.floor(left/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}`;if(left===0&&!stableTimerDone){stableTimerDone=true;clearInterval(stableTimerHandle);threeBeeps();t.classList.remove('large');const title=document.querySelector('#timerTitle');if(title)title.textContent='✓ TEMPS ÉCOULÉ · TERMINÉ';t.classList.add('timer-finished');const clockDone=document.querySelector('#stableClock');if(clockDone)clockDone.textContent='00:00'}};
  tick();stableTimerHandle=setInterval(tick,200);
 };
 // Échauffement dans le même grand minuteur, avec navigation immédiate.
@@ -210,7 +243,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if(b.dataset.guidedNext){e.stopImmediatePropagation();guidedStep++;showGuidedStep();return}
  if(b.dataset.guidedPrev){e.stopImmediatePropagation();guidedStep=Math.max(0,guidedStep-1);showGuidedStep();return}
  if(b.dataset.stopGuided){e.stopImmediatePropagation();clearInterval(guidedInterval);document.querySelector('#timer').className='timer';return}
- if(b.dataset.toggleSound){e.stopImmediatePropagation();data.soundEnabled=!data.soundEnabled;persist();b.textContent=data.soundEnabled?'Son activé':'Muet';return}
+ if(b.dataset.toggleSound){e.stopImmediatePropagation();data.soundEnabled=!data.soundEnabled;persist();b.textContent=data.soundEnabled?'Son activé':'Muet';if(data.soundEnabled)unlockTimerAudio();return}
+ if(b.dataset.testSound){e.preventDefault();e.stopImmediatePropagation();unlockTimerAudio();if(!data.soundEnabled){alert('Active le son du chronomètre pour tester le signal.');return}threeBeeps();return}
  if(b.dataset.stoptimer){
   // Fermeture manuelle : supprimer AUSSI la classe large, dont le CSS force display:flex.
   e.preventDefault();e.stopImmediatePropagation();
@@ -224,6 +258,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
 const fixesStyle=document.createElement('style');fixesStyle.textContent=`.timer.large{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:45vh}.timer-title{font-size:15px;letter-spacing:.05em;text-align:center;font-weight:750}.stable-clock{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:clamp(68px,15vw,105px);line-height:1.1;min-width:5.6ch;text-align:center;white-space:nowrap}.timer-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}.setgrid:has(select[data-band]){grid-template-columns:1fr 1fr 1fr}.setgrid:not(:has(label:first-child)){grid-template-columns:1fr 1fr}.exercise .setgrid{align-items:end}.timer:not(.large){flex-wrap:wrap;justify-content:center}`;document.head.append(fixesStyle);
 
 const closeTimerStyle=document.createElement('style');closeTimerStyle.textContent='.timer:not(.show){display:none!important}';document.head.append(closeTimerStyle);
+const soundFinishStyle=document.createElement('style');soundFinishStyle.textContent='.timer.timer-finished{background:#194137;border-color:#71d7a4}.timer.timer-finished .timer-title,.timer.timer-finished #stableClock{color:#b9ffdb}.timer-actions button{min-width:100px}';document.head.append(soundFinishStyle);
 const motivationStyle=document.createElement('style');motivationStyle.textContent=`.motivation-banner{border-left:4px solid var(--accent);background:linear-gradient(120deg,#35291e,#1d2025)}.motivation-banner small{color:var(--accent);font-weight:800;letter-spacing:.09em}.motivation-banner p{font-size:17px;font-weight:650;margin:9px 0 2px}`;document.head.append(motivationStyle);
 
 // V5.3.3 — accueil direct, historique réel et pompes conditionnelles.
@@ -546,4 +581,185 @@ document.addEventListener('click',e=>{
 },true);
 
 render();
+
+// V5.3.3.9e TEST — programme flexible, historique antérieur inchangé.
+const V539_START='2026-10-19';
+const newExercises={
+ push39:[['Développé couché','3 × 6–10 · RPE 7–8',3,70,8,120],['Développé incliné haltères','3 × 8–12',3,20,10,120],['Pec Deck','2 × 12–15',2,30,13,75],['Élévations latérales','3 × 12–20',3,6,15,60],['Triceps poulie','3 × 10–15',3,35,12,75]],
+ pull39:[['Tirage vertical neutre','4 × 8–12 · avant-bras indolore',4,60,10,120],['Rowing poitrine soutenue','3 × 8–12',3,50,10,120],['Tirage horizontal machine prise neutre','3 × 10–12 · machine distincte du rowing',3,'',11,90],['Face pull','3 × 15–20',3,25,17,75],['Curl biceps machine','3 × 10–15 · charge légère, sans douleur avant-bras',3,'',12,90]],
+ upper39:[['Développé incliné haltères','3 × 8–12',3,20,10,120],['Tirage vertical neutre','3 × 8–12',3,60,10,120],['Rowing poitrine soutenue','3 × 10–12',3,50,11,90],['Développé militaire machine','2 × 8–12 · si épaules tolèrent',2,'',10,120],['Élévations latérales','2 × 15–20',2,6,17,60],['Triceps poulie','2 × 10–15',2,35,12,75],['Extension triceps corde au-dessus de la tête','2 × 10–15 · sans douleur avant-bras',2,'',12,75]],
+ legs39:[['Belt squat','3 × 8–12 · démarrer léger, amplitude confortable',3,'',10,120],['Hip thrust machine (essai)','3 × 10–12 · remplaçable selon ressenti',3,'',10,90],['Leg curl couché','3 × 10–15 · pas de leg extension',3,'',12,90],['Soulevé de terre roumain haltères','2 × 8–12 · dos neutre',2,'',10,120],['Mollets debout','3 × 12–20',3,'',15,60]]
+};
+Object.assign(EX,newExercises);
+const newSessions=[
+ {id:'push39',name:'PUSH — Pectoraux / épaules / triceps',day:-1,kind:'strength'},
+ {id:'pull39',name:'PULL — Dos',day:-1,kind:'strength'},
+ {id:'upper39',name:'UPPER — Haut du corps',day:-1,kind:'strength'},
+ {id:'legs39',name:'LEGS — Salle',day:-1,kind:'strength'},
+ {id:'lower39',name:'Mobilité + renforcement jambes',day:-1,kind:'custom39'},
+ {id:'bikeEnd39',name:'BikeErg — Endurance 35–40 min',day:-1,kind:'bike'},
+ {id:'bikeEasy39',name:'BikeErg — Facile 30 min',day:-1,kind:'bike'},
+ {id:'walk39',name:'Marche inclinée — Facile 20–30 min',day:-1,kind:'custom39'},
+ {id:'bikeHard39',name:'BikeErg — Intervalles',day:-1,kind:'bike'},
+ {id:'wod39',name:'WOD full body — 15–25 min',day:-1,kind:'wod'},
+ {id:'mob39',name:'Mobilité + Mes étirements (5 min)',day:-1,kind:'custom39'},
+ {id:'stretch39',name:'Mes étirements — 5 min',day:-1,kind:'custom39'},
+ {id:'push39a',name:'Pompes — Volume',day:-1,kind:'pushups',optional:true},
+ {id:'push39b',name:'Pompes — Technique',day:-1,kind:'pushups',optional:true},
+ {id:'run39',name:'Course / marche — reprise progressive',day:-1,kind:'custom39'},
+ {id:'free39',name:'Autre activité',day:-1,kind:'custom39'}
+];
+sessions.push(...newSessions);
+const CUSTOM39={
+ lower39:[['Goblet squat — 3 × 10 · charge selon RPE',0],['Split squat — 2 × 8/jambe',0],['Single-leg deadlift — 2 × 8/jambe',0],['Chaise contre un mur — 3 × 30 s',30],['Équilibre sur coussin — 2 × 30 s/jambe',30],['Mobilité hanches / chevilles — 5 min',300]],
+ mob39:[['Chat / Vache — 8 répétitions',0],['Open Book — 8 par côté',0],['Fléchisseurs de hanche — 30 s/jambe',30],['Ischio-jambiers — 30 s/jambe',30],['Chevilles — 10 par jambe',0]],
+ stretch39:[['Mes étirements — 5 minutes',300]],
+ walk39:[['Marche inclinée tranquille — 20 à 30 min',1800]],
+ run39:[['Marche 5 min',300],['Course douce 1 min / marche 2 min × 5 — uniquement après accord du soignant',900],['Marche 5 min',300]],
+ free39:[['Activité personnalisée — indique le détail en notes',0]]
+};
+const FINISH39={push39:[['Gainage planche — 40 s',40],['Pompes faciles — 8 à 12 répétitions',0]],pull39:[['Bird dog — 8 par côté',0],['Pallof press élastique — 10 par côté',0],['Gainage latéral — 30 s/côté',30]],upper39:[['Dead bug — 10 alternées',0],['Planche — 40 s',40]],legs39:[['Gainage latéral — 30 s/côté',30],['Mollets légers — 15 répétitions',0]],lower39:[['Gainage latéral — 30 s/côté',30]]};
+// Les nouveaux jours ne remplacent pas les anciennes séances enregistrées.
+const legacyAll539=all,legacyScheduled539=scheduledIds;
+function default39(d){const w=idx(d);return [['push39'],['bikeEnd39','mob39'],['pull39'],[],['upper39'],['legs39'],[]][w]}
+function plan39(d){if(d<V539_START)return legacyScheduled539(d);return Object.prototype.hasOwnProperty.call(data.schedule,d)?data.schedule[d]:default39(d)}
+scheduledIds=function(d){return plan39(d)};
+all=function(d){return (d<V539_START?legacyAll539(d):plan39(d).map(id=>sessions.find(s=>s.id===id)).filter(Boolean))};
+// Les anciennes dates et les anciens IDs continuent d'utiliser leur programme d'origine.
+const legacyPushPlan539=pushPlan;
+pushPlan=function(id,d){if(id==='push39a')return [30,28,26,24];if(id==='push39b')return [25,25,25];return legacyPushPlan539(id,d)};
+const legacySession539=renderSession;
+renderSession=function(){
+ const s=sessions.find(x=>x.id===openId);if(!s)return '<button data-back="1">Retour</button>';
+ if(s.kind==='custom39'){
+  const v=get(s.id,date),steps=CUSTOM39[s.id]||[];
+  return `<button data-back="1">← Retour</button><div class="card"><h2>${esc(s.name)}</h2><p class="mini">Coche les exercices réalisés. Les durées ont leur propre chronomètre.</p>${steps.map(([label,sec],i)=>`<div class="exercise"><label class="row"><span>${esc(label)}</span><input style="width:24px;min-height:24px" type="checkbox" data-check="${i}" ${v.checks?.[i]?'checked':''}></label>${sec?`<button data-timer="${sec}">⏱ ${sec>=60?Math.round(sec/60)+' min':sec+' s'}</button>`:''}</div>`).join('')}${formInput('Douleur genou /10','knee',v.knee||'')}${formInput('Douleur bras /10','arm',v.arm||'')}<label>Notes<textarea data-field="notes">${esc(v.notes||'')}</textarea></label><div class="actions"><button class="primary" data-save="1">✓ Terminer</button><button data-back="1">Retour</button></div></div>`;
+ }
+ let html=legacySession539();
+ if(FINISH39[s.id]){
+  const f=FINISH39[s.id];html+=`<details class="card"><summary><b>Finisher facultatif · 5–8 min</b></summary><p class="mini">À faire seulement si tu as récupéré et si les mouvements sont indolores. Sinon, termine ta séance.</p>${f.map(([label,sec])=>`<div class="row finisher-item"><span>${esc(label)}</span>${sec?`<button data-timer="${sec}">⏱</button>`:''}</div>`).join('')}<p class="mini">1 à 2 tours tranquilles. Pas de finisher obligatoire.</p></details>`;
+ }
+ return html;
+};
+const legacyToday539=renderToday;
+function choose39(d,options){return `<div class="choice39">${options.map(([id,label])=>`<button data-choose39="${id}" data-choosedate39="${d}" class="${plan39(d).includes(id)?'selected39':''}">${esc(label)}</button>`).join('')}</div>`}
+function renderToday39(){
+ const m=isoOf(monday(date));
+ const week=`<div class="card"><div class="row"><b>Ma semaine</b><span class="mini">${m} → ${plus(m,6)}</span></div><div class="days week39">${DAYS.map((_,i)=>{const d=plus(m,i),ids=all(d),done=ids.some(s=>get(s.id,d).done);return `<button data-date="${d}" class="${d===date?'active':''}">${short[i]}<br>${d.slice(8)}<br><small>${done?'✓':ids.length?'●':'–'}</small></button>`}).join('')}</div><div class="row" style="margin-top:10px"><button data-shift="-7">‹ Semaine</button><button data-shift="7">Semaine ›</button></div></div>`;
+ const ids=all(date),cards=ids.map(s=>`<button class="today-task" data-open="${s.id}"><span class="today-task-text"><b>${esc(s.name)}</b><small>${get(s.id,date).done?'✓ Terminée':'○ À faire'}</small></span><span class="today-task-action">Ouvrir ›</span></button>`).join('');
+ const day=idx(date);let choices='';
+ if(day===3)choices=`<div class="card"><b>Récupération — choisis</b><p class="mini">Le repos est recommandé par défaut.</p>${choose39(date,[['rest','Repos'],['bikeEasy39','BikeErg facile'],['walk39','Marche inclinée']])}</div>`;
+ if(day===5)choices=`<div class="card"><b>Bas du corps — choisis</b>${choose39(date,[['legs39','LEGS salle'],['lower39','Mobilité + jambes']])}</div>`;
+ if(day===6)choices=`<div class="card"><b>Journée libre — facultative</b><p class="mini">Le repos reste le choix par défaut.</p>${choose39(date,[['rest','Repos'],['bikeEnd39','BikeErg'],['bikeHard39','BikeErg intense'],['wod39','WOD'],['run39','Course / marche'],['push39a','Pompes'],['mob39','Mobilité'],['free39','Autre']])}</div>`;
+ return week+`<div class="card"><h2>${DAYS[day]} ${date.slice(8,10)}/${date.slice(5,7)}</h2>${cards||'<p class="mini">Repos prévu. Aucune séance obligatoire.</p>'}</div>`+choices+`<div class="card"><b>Accès rapides</b><div class="choice39"><button data-quick39="stretch39">Mes étirements · 5 min</button><button data-quick39="push39a">Pompes</button><button data-quick39="mob39">Mobilité</button></div></div>`;
+}
+renderToday=function(){return date<V539_START?legacyToday539():renderToday39()};
+const legacyHeader539=header;
+header=function(){return legacyHeader539().replace('V5.3.3.8','V5.3.3.9e TEST').replace('100 pompes • genou renforcé','forme durable • esthétique • récupération')};
+// Les séances rapides sont enregistrées uniquement si l'utilisateur les termine.
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.choose39){e.preventDefault();e.stopImmediatePropagation();const d=b.dataset.choosedate39,id=b.dataset.choose39,day=idx(d);let next=[];
+  if(day===3)next=id==='rest'?[]:[id];
+  else if(day===5)next=id==='rest'?[]:[id];
+  else if(day===6)next=id==='rest'?[]:[id];
+  else return;
+  if(plan39(d).some(x=>get(x,d).done)&&!confirm('Une activité de ce jour est déjà terminée. Changer le choix ne supprimera pas son historique. Continuer ?'))return;
+  data.schedule[d]=next;persist();render();return;
+ }
+ if(b.dataset.quick39){e.preventDefault();e.stopImmediatePropagation();saveDraft();openId=b.dataset.quick39;render();scrollTo(0,0);return;}
+},true);
+// YouTube Shorts, watch, youtu.be et live, avec validation de l'identifiant.
+function canonicalYoutube39(raw){if(!raw)return '';try{const u=new URL(raw),host=u.hostname.toLowerCase().replace(/^www\./,'').replace(/^m\./,'');let id='';if(host==='youtu.be')id=u.pathname.split('/')[1];else if(host==='youtube.com'||host==='youtube-nocookie.com'){const p=u.pathname.split('/').filter(Boolean);if(p[0]==='watch')id=u.searchParams.get('v');else if(['shorts','live','embed'].includes(p[0]))id=p[1]}return /^[\w-]{11}$/.test(id||'')?'https://www.youtube.com/watch?v='+id:null}catch(e){return null}}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-video-save]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();const name=b.dataset.videoSave,input=[...document.querySelectorAll('[data-video-input]')].find(x=>x.dataset.videoInput===name);const url=canonicalYoutube39((input?.value||'').trim());if(url===null){alert('Lien YouTube non reconnu. Utilise une vidéo, un Short ou un lien youtu.be.');return}data.videoPrefs||={};data.videoPrefs[name]=url;persist();render();alert(url?'Vidéo enregistrée.':'Vidéo retirée.');},true);
+// Sauvegarde des choix dans le JSON existant : data.schedule est déjà exporté et importé.
+const style539=document.createElement('style');style539.textContent=`.choice39{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.choice39 button{flex:1 1 130px;text-align:center}.choice39 .selected39{border-color:var(--accent);background:#65432c;color:#fff}.week39{margin-top:12px}.week39 button{line-height:1.5}.week39 small{color:#e8a061}.finisher-item{margin:12px 0;gap:10px}.finisher-item span{flex:1}.today-details>summary{font-size:13px}`;document.head.append(style539);
+
+
+// V5.3.3.9b — corrections issues des tests utilisateur (15/10/2026)
+const LEX539B=[
+ ['Belt squat','Quadriceps, fessiers','Ceinture au bassin, pieds stables, descends dans une amplitude confortable puis remonte sans élan.','Réduis la charge si genou ou dos réagissent.'],
+ ['Hip thrust machine (essai)','Fessiers','Installe le bassin sous le coussin, pousse par les pieds, termine en alignant le tronc sans cambrer.','Teste la machine à faible charge avant de progresser.'],
+ ['Leg curl couché','Ischio-jambiers','Allongé sur le ventre, fléchis les genoux en ramenant les talons vers les fessiers, retour lent.','Ne décolle pas le bassin du banc.'],
+ ['Soulevé de terre roumain haltères','Ischio-jambiers, fessiers','Hanches vers l’arrière, genoux souples, haltères près des jambes, dos stable.','Arrête l’amplitude avant toute perte de contrôle lombaire.'],
+ ['Tirage horizontal machine prise neutre','Dos, biceps','Sur la machine dédiée, mains face à face, tire les coudes en arrière sans balancer le buste.','Évite de forcer la prise si l’avant-bras gauche devient douloureux.'],
+ ['Curl biceps machine','Biceps','Règle le siège, coudes stables sur les appuis, monte sans élan et redescends lentement.','Charge légère au départ ; interromps en cas de douleur à l’avant-bras.'],
+ ['Développé militaire machine','Épaules, triceps','Règle le siège, pousse les poignées au-dessus de la tête sans hausser les épaules.','Évite une amplitude douloureuse.'],
+ ['Triceps poulie','Triceps','Coudes fixes près du corps, tends les avant-bras sans balancer le buste.','Garde les poignets confortables.'],
+ ['Extension triceps corde au-dessus de la tête','Triceps','Coudes orientés vers l’avant, tends les bras progressivement.','Arrête si l’avant-bras ou le coude réagit.'],
+ ['Goblet squat','Quadriceps, fessiers','Tiens un kettlebell devant la poitrine, descends en contrôle, pousse dans les pieds.','Commence léger et adapte l’amplitude au genou.'],
+ ['Split squat','Quadriceps, fessiers','Pieds décalés, descends verticalement, contrôle le genou avant.','Utilise un appui si nécessaire.'],
+ ['Single-leg deadlift','Fessiers, ischio-jambiers, équilibre','Bascule le buste à partir des hanches en gardant le bassin stable.','Commence sans charge et avec un appui.'],
+ ['Chaise contre un mur','Quadriceps (isométrie)','Dos au mur, genoux modérément fléchis, tiens la durée prévue.','Évite une flexion profonde si elle réveille les douleurs.'],
+ ['Équilibre sur coussin','Stabilité du genou et cheville','Tiens sur une jambe, genou souple, regarde un point fixe.','Prévois un appui proche pour éviter la chute.'],
+ ['Bird dog','Gainage et contrôle du dos','À quatre pattes, tends bras et jambe opposés sans tourner le bassin.','Évite de cambrer.'],
+ ['Dead bug','Abdominaux profonds','Sur le dos, tends bras et jambe opposés sans perdre le contrôle du bassin.','Réduis l’amplitude si le dos se creuse.'],
+ ['Pallof press avec élastique','Gainage antirotation','Élastique ancré sur le côté, pousse les mains devant toi en résistant à la rotation.','Bassin immobile, résistance modérée.'],
+ ['Gainage planche','Tronc','Coudes sous les épaules, corps aligné, respiration régulière.','Ne laisse pas le bas du dos s’affaisser.'],
+ ['Gainage latéral','Obliques, stabilité','Coude sous l’épaule, bassin soulevé, corps aligné.','Utilise les genoux au sol si nécessaire.'],
+ ['Reverse Nordic assisté (facultatif)','Quadriceps','À genoux sur surface confortable, incline le tronc en arrière d’un bloc, petite amplitude.','Très progressif, uniquement si genou bien tolérant.'],
+ ['Mollets debout','Mollets','Monte sur la pointe des pieds puis redescends lentement.','Ne rebondis pas.'],
+ ['Mes étirements — 5 min','Souplesse','Réalise ta routine personnelle pendant cinq minutes.','Évite les positions douloureuses.']
+];
+for(const row of LEX539B){if(!LEXICON.some(x=>x[0]===row[0]))LEXICON.push(row)}
+const legacyLexItems539b=lexItems;
+lexItems=function(q){const normalize=x=>String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');const active=new Set([...Object.keys(EX).flatMap(id=>activeEx(id).map(ex=>ex[0])),...Object.values(CUSTOM39).flatMap(steps=>steps.map(([label])=>label.split(' — ')[0])),...LEX539B.map(x=>x[0])]);const rows=LEXICON.filter(x=>normalize(x[0]).includes(normalize(q))).sort((a,b)=>Number(active.has(b[0]))-Number(active.has(a[0])));return rows.map(x=>`<details class="card"><summary><b>${esc(x[0])}</b> <small>${active.has(x[0])?'Programme actuel · ': 'Ancien / autre · '}▾</small></summary><p><b>Muscles / objectif :</b> ${esc(x[1])}</p><p><b>Exécution :</b> ${esc(x[2])}</p><p><b>Attention :</b> ${esc(x[3])}</p>${videoBlock(x[0])}</details>`).join('')||'<p class="muted">Aucun exercice trouvé.</p>'};
+renderLexicon=function(){return `<p class="mini">Les exercices actuels et leurs consignes. Les anciens exercices restent conservés dans les historiques.</p><label>Rechercher un exercice<input id="lexSearch" type="search" placeholder="Ex. belt squat, curl machine"></label><div id="lexItems">${lexItems('')}</div>`};
+// Les étirements sont associés à chaque séance, sans créer de séance supplémentaire.
+const beforeSession539b=renderSession;
+renderSession=function(){const s=sessions.find(x=>x.id===openId);if(!s)return beforeSession539b();let html=beforeSession539b();if(date<V539_START)return html;const v=get(s.id,date);
+ if(s.id==='lower39'){
+  const extras=v.customExtra||{};html=html.replace(/(<div class="exercise"><label class="row"><span>(?:Goblet squat|Split squat|Single-leg deadlift|Chaise contre un mur|Équilibre sur coussin)[^<]*<\/span>[\s\S]*?<\/div>)/g,(whole)=>whole); // individual controls inserted below
+  html=html.replace(/(<div class="exercise"><label class="row"><span>([^<]+)<\/span><input[^>]+data-check="(\d+)"[^>]*><\/label>(?:<button[^>]*>[\s\S]*?<\/button>)?<\/div>)/g,(whole,unused,label,i)=>{if(+i>4)return whole;const n=extras[i]||0;return whole.replace('</div>',`<div class="row custom-extra"><small>Séries supplémentaires : ${n} (maximum 2)</small><button type="button" data-extra-custom="${i}" ${n>=2?'disabled':''}>＋ Série</button>${n?`<button type="button" data-minus-custom="${i}">−</button>`:''}</div></div>`)});
+ }
+ if(s.id!=='stretch39'){
+ const checked=!!v.stretchesDone;html+=`<div class="card"><div class="row"><div><b>Mes étirements · 5 min</b><p class="mini">Facultatif, ne compte pas comme une séance.</p></div><button data-timer="300">⏱ 5 min</button></div><button type="button" class="${checked?'done':''}" data-stretch-done="1">${checked?'✓ Effectués — modifier':'○ Marquer comme effectués'}</button></div>`;
+ }
+ if(['bikeEnd39','bikeEasy39'].includes(s.id)){
+ const f=s.id==='bikeEnd39'?[['Planche — 40 s',40],['Dead bug — 10 par côté',0],['Gainage latéral — 30 s/côté',30]]:[['Bird dog — 8 par côté',0],['Planche — 30 s',30],['Pallof press élastique — 10 par côté',0]];
+ html+=`<details class="card"><summary><b>Finisher gainage facultatif · 5–7 min</b></summary><p class="mini">1 à 2 tours faciles, sans chercher la fatigue.</p>${f.map(([label,sec])=>`<div class="row finisher-item"><span>${esc(label)}</span>${sec?`<button data-timer="${sec}">⏱</button>`:''}</div>`).join('')}</details>`;
+ }
+ return html;
+};
+// Les options sont conservées dans data.entries et donc dans les sauvegardes JSON.
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!openId)return;
+ if(b.dataset.stretchDone){e.preventDefault();e.stopImmediatePropagation();saveDraft();const v=get(openId,date);set(openId,date,{stretchesDone:!v.stretchesDone});render();return}
+ if(b.dataset.extraCustom!==undefined||b.dataset.minusCustom!==undefined){e.preventDefault();e.stopImmediatePropagation();saveDraft();const i=b.dataset.extraCustom??b.dataset.minusCustom;const v=get(openId,date),extras={...(v.customExtra||{})};extras[i]=Math.max(0,Math.min(2,(extras[i]||0)+(b.dataset.extraCustom!==undefined?1:-1)));set(openId,date,{customExtra:extras});render();return}
+},true);
+// Activité libre : nom et durée en plus des notes, sans remplacer les anciennes données.
+const beforeFree539b=renderSession;
+renderSession=function(){let h=beforeFree539b();if(openId==='free39'&&date>=V539_START){const v=get(openId,date);h=h.replace('<label>Notes<textarea',`${formInput('Nom de mon activité','activityName',v.activityName||'','text')}${formInput('Durée (minutes)','activityMinutes',v.activityMinutes||'')}<label>Notes<textarea`)}return h};
+// Préserver l’accès à la gestion complète dans Semaine sans encombrer l’accueil.
+const oldWeek539b=renderWeek;
+renderWeek=function(){return oldWeek539b()+`<details class="card"><summary>Gestion détaillée du planning</summary>${legacyToday539()}</details>`};
+
+
+// V5.3.3.9e — étirements visibles par jour et suppression contrôlée des entrées de test.
+const renderTodayBefore539c=renderToday;
+renderToday=function(){let h=renderTodayBefore539c();if(date<V539_START)return h;
+ const dayRecords=Object.entries(data.entries||{}).filter(([k,v])=>k.startsWith(date+'|')&&v&&v.done);
+ const standalone=dayRecords.find(([k])=>k.endsWith('|stretch39'));
+ const attached=dayRecords.filter(([k,v])=>!k.endsWith('|stretch39')&&v.stretchesDone);
+ const status=standalone||attached.length?'✓ Étirements effectués':'○ Étirements non cochés';
+ const detail=standalone?'Séance étirements enregistrée':attached.length?'Validés dans '+attached.map(([k])=>sessions.find(x=>x.id===k.split('|')[1])?.name||'une séance').join(', '):'5 minutes facultatives';
+ const panel=`<div class="card" id="stretch-status-539c"><div class="row"><div><b>Mes étirements · ${esc(date)}</b><p class="mini">${esc(status)} · ${esc(detail)}</p></div><button data-quick39="stretch39">${standalone?'Voir':'Ouvrir'}</button></div>${standalone?`<button data-delete-entry-539c="${esc(standalone[0])}" class="mini">Supprimer cette séance d’étirements</button>`:''}</div>`;
+ return h+panel;
+};
+const renderProgressBefore539c=renderProgress;
+renderProgress=function(){let h=renderProgressBefore539c();
+ // Supprimer depuis Progrès une séance complète, après confirmation. Ne jamais effacer les autres séances du jour.
+ h=h.replace(/(<button class="card row"[^>]*data-history="([^"]+)"[\s\S]*?<\/button>)/g,(whole,button,key)=>{
+   if(!data.entries[key]?.done)return whole;
+   return `<div class="history-row-539c">${whole}<button type="button" data-delete-entry-539c="${key}" class="delete-entry-539c" title="Supprimer uniquement cette séance">Supprimer</button></div>`;
+ });return h;
+};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-delete-entry-539c]');if(!b)return;
+ e.preventDefault();e.stopImmediatePropagation();const key=b.getAttribute('data-delete-entry-539c');
+ if(!Object.prototype.hasOwnProperty.call(data.entries,key))return;
+ const [d,id]=key.split('|'),name=sessions.find(x=>x.id===id)?.name||'cette séance';
+ if(!confirm(`Supprimer définitivement « ${name} » du ${d} ?\nCette action supprime uniquement cet enregistrement. Pense à conserver une sauvegarde JSON.`))return;
+ delete data.entries[key];persist();if(openId===id&&date===d)openId=null;render();
+},true);
+const style539c=document.createElement('style');style539c.textContent='.history-row-539c{display:flex;align-items:stretch;gap:8px;margin:8px 0}.history-row-539c>.card{flex:1;min-width:0;margin:0}.delete-entry-539c{flex:0 0 auto;align-self:center;font-size:12px;color:#ffb0a4;border-color:#75504b}#stretch-status-539c{margin-top:12px}';document.head.append(style539c);
+
 </script><script>if('serviceWorker' in navigator && location.protocol==='https:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script></body></html>
