@@ -582,7 +582,7 @@ document.addEventListener('click',e=>{
 
 render();
 
-// V5.3.3.9e TEST — programme flexible, historique antérieur inchangé.
+// V5.3.3.10d TEST — programme flexible, historique antérieur inchangé.
 const V539_START='2026-10-19';
 const newExercises={
  push39:[['Développé couché','3 × 6–10 · RPE 7–8',3,70,8,120],['Développé incliné haltères','3 × 8–12',3,20,10,120],['Pec Deck','2 × 12–15',2,30,13,75],['Élévations latérales','3 × 12–20',3,6,15,60],['Triceps poulie','3 × 10–15',3,35,12,75]],
@@ -655,7 +655,7 @@ function renderToday39(){
 }
 renderToday=function(){return date<V539_START?legacyToday539():renderToday39()};
 const legacyHeader539=header;
-header=function(){return legacyHeader539().replace('V5.3.3.8','V5.3.3.9e TEST').replace('100 pompes • genou renforcé','forme durable • esthétique • récupération')};
+header=function(){return legacyHeader539().replace('V5.3.3.8','V5.3.3.10d TEST').replace('100 pompes • genou renforcé','forme durable • esthétique • récupération')};
 // Les séances rapides sont enregistrées uniquement si l'utilisateur les termine.
 document.addEventListener('click',e=>{
  const b=e.target.closest('button');if(!b)return;
@@ -761,5 +761,127 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-delete-ent
  delete data.entries[key];persist();if(openId===id&&date===d)openId=null;render();
 },true);
 const style539c=document.createElement('style');style539c.textContent='.history-row-539c{display:flex;align-items:stretch;gap:8px;margin:8px 0}.history-row-539c>.card{flex:1;min-width:0;margin:0}.delete-entry-539c{flex:0 0 auto;align-self:center;font-size:12px;color:#ffb0a4;border-color:#75504b}#stretch-status-539c{margin-top:12px}';document.head.append(style539c);
+
+
+// V5.3.3.10d TEST — options non destructives, données historiques préservées.
+data.ignoredActivities ||= {};
+data.vacationPeriods ||= [];
+const v10DateLabel=d=>new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const v10Vacation=d=>(data.vacationPeriods||[]).find(p=>p.start<=d&&p.end>=d);
+const v10Ignored=(id,d)=>!!data.ignoredActivities[d+'|'+id];
+const v10IsBike=id=>sessions.find(s=>s.id===id)?.kind==='bike';
+const v10AllBefore=all;
+all=function(d){const vac=v10Vacation(d);if(vac&&vac.mode!=='normal')return [];return v10AllBefore(d).filter(s=>!v10Ignored(s.id,d)||get(s.id,d).done)};
+const v10TodayBefore=renderToday;
+renderToday=function(){let h=v10TodayBefore();const vac=v10Vacation(date);
+ if(vac&&vac.mode!=='normal')h=`<div class="card"><h2>Vacances · ${esc(v10DateLabel(date))}</h2><p class="mini">${vac.mode==='free'?'Programme en pause. Activités libres possibles.':'Pause sportive prévue.'} Aucun entraînement à rattraper.</p>${vac.mode==='free'?'<button data-v10-free="1" class="primary">＋ Enregistrer une activité libre</button>':''}</div>`+h;
+ if(!vac||vac.mode==='normal')h=h.replace(/(<button class="today-task" data-open="([^"]+)"[\s\S]*?<\/button>)/g,(whole,unused,id)=>v10Ignored(id,date)?whole.replace('○ À faire','↷ Ignorée').replace('Ouvrir ›','Voir ›'):whole);
+ h+=`<details class="card"><summary><b>Gérer les activités du jour</b></summary><p class="mini">Une activité ignorée ne compte pas comme effectuée et n’est plus à valider.</p>${v10AllBefore(date).map(s=>`<div class="row v10-action"><span>${esc(s.name)}<br><small>${get(s.id,date).done?'✓ Effectuée':v10Ignored(s.id,date)?'↷ Ignorée':'○ Non effectuée'}</small></span>${!get(s.id,date).done?`<button data-v10-ignore="${esc(s.id)}">${v10Ignored(s.id,date)?'Réactiver':'Ignorer'}</button>`:''}</div>`).join('')||'<p class="mini">Aucune activité prévue.</p>'}</details>`;
+ return h;
+};
+const v10SessionBefore=renderSession;
+renderSession=function(){let h=v10SessionBefore();if(!openId)return h;const s=sessions.find(x=>x.id===openId);if(!s)return h;
+ // Suppression des champs de douleur uniquement dans les formulaires. Les valeurs historiques restent en stockage.
+ h=h.replace(/<label>Douleur (?:genou|bras) \/10<input[^>]*><\/label>/g,'');
+ h=h.replace('Notes / sensations','Ressenti et commentaires').replace('>Notes<textarea','>Ressenti et commentaires<textarea');
+ if(s.kind==='bike'){
+  const v=get(s.id,date);
+  const calories=`<div class="card"><b>Calories BikeErg</b><p class="mini">Saisis uniquement la valeur affichée par le moniteur, sans estimation.</p>${formInput('Calories affichées (kcal)','calories',v.calories??'')}</div>`;
+  const anchor='<label>Ressenti et commentaires';
+  h=h.includes(anchor)?h.replace(anchor,calories+anchor):h.replace('</div>',calories+'</div>');
+ }
+ return h;
+};
+// Tableau de bord de progression : chiffres réellement calculés à partir des séances terminées.
+renderProgress=function(){
+ const items=Object.entries(data.entries||{}).filter(([k,v])=>v&&v.done).sort((a,b)=>b[0].localeCompare(a[0]));
+ const days=[...new Set(items.map(([k])=>k.slice(0,10)))];
+ const now=todayISO(),month=now.slice(0,7),monthItems=items.filter(([k])=>k.startsWith(month));
+ const bike=items.filter(([k])=>v10IsBike(k.split('|')[1]));
+ const totalBikeMin=bike.reduce((n,[k,v])=>n+(Number(v.minutes)||0),0);
+ const calories=bike.filter(([k,v])=>v.calories!==''&&v.calories!=null&&Number.isFinite(+v.calories)&&+v.calories>=0);
+ const kcal=calories.reduce((n,[k,v])=>n+Number(v.calories),0);
+ const byDate={};for(const item of items)(byDate[item[0].slice(0,10)] ||= []).push(item);
+ const stat=(val,label)=>`<div class="card"><h2>${val}</h2><small>${label}</small></div>`;
+ const period=(data.vacationPeriods||[]).length;
+ const filter=data.v10Graph||'sessions';
+ const graphData=(()=>{const recent=Array.from({length:8},(_,i)=>plus(isoOf(monday(now)),-7*(7-i)));return recent.map(start=>{const end=plus(start,6),rows=items.filter(([k])=>k.slice(0,10)>=start&&k.slice(0,10)<=end);let val=rows.length;if(filter==='bike')val=rows.filter(([k])=>v10IsBike(k.split('|')[1])).reduce((n,[k,v])=>n+(+v.minutes||0),0);if(filter==='push')val=rows.filter(([k])=>sessions.find(s=>s.id===k.split('|')[1])?.kind==='pushups').reduce((n,[k,v])=>n+(v.push||[]).reduce((a,b)=>a+(+b||0),0),0);if(filter==='strength')val=rows.filter(([k])=>sessions.find(s=>s.id===k.split('|')[1])?.kind==='strength').length;return {d:start,v:val}})})();
+ const max=Math.max(1,...graphData.map(x=>x.v));
+ const graph=`<div class="card"><div class="row"><b>Évolution sur 8 semaines</b><span class="mini">${filter==='bike'?'Minutes BikeErg':filter==='push'?'Pompes réalisées':filter==='strength'?'Séances musculation':'Activités terminées'}</span></div><label>Indicateur<select id="v10-graph"><option value="sessions" ${filter==='sessions'?'selected':''}>Séances réalisées</option><option value="strength" ${filter==='strength'?'selected':''}>Musculation</option><option value="bike" ${filter==='bike'?'selected':''}>BikeErg · minutes</option><option value="push" ${filter==='push'?'selected':''}>Pompes · répétitions</option></select></label><div class="v10-bars">${graphData.map(x=>`<div class="v10-barcol"><span>${x.v}</span><i style="height:${Math.max(3,Math.round(x.v/max*95))}px"></i><small>${x.d.slice(8,10)}/${x.d.slice(5,7)}</small></div>`).join('')}</div><p class="mini">Données issues uniquement des séances terminées. Les vacances ne sont pas comptées comme des séances manquées.</p></div>`;
+ const groups=Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0]));
+ return `<h2>Vue d'ensemble</h2><div class="grid">${stat(items.length,'Activités enregistrées')}${stat(monthItems.length,'Ce mois-ci')}${stat(days.length,'Jours actifs')}${stat(totalBikeMin+' min','BikeErg cumulé')}</div><div class="card"><b>Calories BikeErg saisies</b><h2>${Math.round(kcal)} kcal</h2><small>${calories.length} séance${calories.length>1?'s':''} avec calories renseignées · pas d’estimation automatique</small></div>${graph}<h2>Historique par journée</h2><p class="mini">Ouvre un jour, puis une séance pour consulter ses séries et commentaires.</p>${groups.map(([d,rows])=>`<details class="card v10-day"><summary><b>${esc(v10DateLabel(d))}</b><br><small>${rows.length} activité${rows.length>1?'s':''} · ${rows.map(([k])=>sessions.find(s=>s.id===k.split('|')[1])?.name?.split(' — ')[0]||'Activité').join(' · ')}</small></summary>${rows.map(([k,v])=>`<div class="v10-history"><button data-history="${esc(k)}"><b>${esc(sessions.find(s=>s.id===k.split('|')[1])?.name||k.split('|')[1])}</b><br><small>${v10IsBike(k.split('|')[1])?`${esc(v.minutes||'–')} min · ${v.calories!==undefined&&v.calories!==''?esc(v.calories)+' kcal · ':''}${esc(v.watts||'–')} W`:v.notes?esc(String(v.notes).slice(0,100)):'Voir séries et commentaires'}</small></button><button class="delete-entry-539c" data-delete-entry-539c="${esc(k)}">Supprimer</button></div>`).join('')}</details>`).join('')||'<div class="card">Aucune activité terminée.</div>'}<p class="mini">Les anciennes données et séries sont conservées. ${period?'Mode Vacances configuré.':''}</p>`;
+};
+const v10SettingsBefore=renderSettings;
+renderSettings=function(){return `<div class="card"><h2>Mode Vacances</h2><p class="mini">Programme mis en pause pendant la période, reprise automatique sans rattrapage. Les activités libres restent possibles selon le mode choisi.</p><div class="grid"><label>Début<input id="v10-start" type="date" value="${todayISO()}"></label><label>Fin<input id="v10-end" type="date" value="${plus(todayISO(),7)}"></label></div><label>Fonctionnement<select id="v10-mode"><option value="pause">Pause complète</option><option value="free" selected>Activités libres uniquement</option><option value="normal">Maintenir le programme habituel</option></select></label><button class="primary" data-v10-addvac="1">Enregistrer la période</button>${(data.vacationPeriods||[]).map((p,i)=>`<div class="row v10-action"><small>${esc(p.start)} → ${esc(p.end)} · ${p.mode==='pause'?'Pause':p.mode==='free'?'Activités libres':'Programme habituel'}</small><button data-v10-delvac="${i}">Supprimer</button></div>`).join('')}</div>`+v10SettingsBefore()};
+// Wake Lock : demande pendant une séance active, et libération en quittant.
+let v10Wake=null,v10WakeFailed=false;
+async function v10WakeSync(){const active=!!openId||!!(timerEnd>Date.now());if(!active){if(v10Wake){try{await v10Wake.release()}catch(e){}v10Wake=null}return}if(document.visibilityState!=='visible'||v10Wake||!('wakeLock' in navigator))return;try{v10Wake=await navigator.wakeLock.request('screen');v10Wake.addEventListener('release',()=>{v10Wake=null})}catch(e){v10WakeFailed=true}}
+const v10RenderBefore=render;
+render=function(){v10RenderBefore();v10WakeSync()};
+const v10TimerBefore=startTimer;
+startTimer=function(sec){v10TimerBefore(sec);v10WakeSync()};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')v10WakeSync()});
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.v10Ignore!==undefined){e.preventDefault();e.stopImmediatePropagation();const key=date+'|'+b.dataset.v10Ignore;if(data.ignoredActivities[key])delete data.ignoredActivities[key];else data.ignoredActivities[key]=true;persist();render();return}
+ if(b.dataset.v10Free){e.preventDefault();e.stopImmediatePropagation();openId='free39';render();return}
+ if(b.dataset.v10Addvac){e.preventDefault();e.stopImmediatePropagation();const start=document.querySelector('#v10-start')?.value,end=document.querySelector('#v10-end')?.value,mode=document.querySelector('#v10-mode')?.value;if(!start||!end||start>end){alert('Vérifie les dates de vacances.');return}data.vacationPeriods.push({start,end,mode});persist();render();return}
+ if(b.dataset.v10Delvac!==undefined){e.preventDefault();e.stopImmediatePropagation();data.vacationPeriods.splice(+b.dataset.v10Delvac,1);persist();render();return}
+ if(b.dataset.stoptimer!==undefined){timerEnd=0;setTimeout(v10WakeSync,100);return}
+},true);
+document.addEventListener('change',e=>{if(e.target.id==='v10-graph'){data.v10Graph=e.target.value;persist();render()}},true);
+const v10CSS=document.createElement('style');v10CSS.textContent=`.v10-bars{display:flex;align-items:end;justify-content:space-between;gap:5px;min-height:155px;padding:20px 0 3px}.v10-barcol{display:flex;align-items:center;flex-direction:column;gap:5px;flex:1;min-width:0}.v10-barcol>span,.v10-barcol>small{font-size:10px;color:var(--muted)}.v10-barcol>i{width:75%;max-width:34px;display:block;background:var(--accent);border-radius:5px 5px 0 0}.v10-day summary{line-height:1.7}.v10-history,.v10-action{display:flex;gap:8px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding:10px 0}.v10-history>button:first-child{flex:1;text-align:left;min-width:0}.v10-history .delete-entry-539c{font-size:11px;color:#ffb0a4}`;document.head.append(v10CSS);
+
+
+// V5.3.3.10d TEST — activités à la carte et échauffements masqués, sans migration destructive.
+const SPORTS10B=[['sportRun10b','Course à pied'],['sportCycle10b','Vélo extérieur'],['sportWalk10b','Marche'],['sportHike10b','Randonnée'],['sportSwim10b','Natation'],['sportBasket10b','Basketball']];
+for(const [id,name] of SPORTS10B)if(!sessions.some(s=>s.id===id))sessions.push({id,name,day:-1,kind:'custom39'});
+const ALL_FREE10B=[['push39','PUSH'],['pull39','PULL'],['upper39','UPPER'],['legs39','LEGS — Salle'],['lower39','Mobilité / jambes'],['mob39','Mobilité'],['stretch39','Étirements'],['push39a','Pompes — Volume'],['push39b','Pompes — Technique'],['bikeEnd39','BikeErg endurance'],['bikeEasy39','BikeErg facile'],['bikeHard39','BikeErg intervalles'],['wod39','WOD'],...SPORTS10B,['free39','Autre activité personnalisée']];
+const FREE_MENU10B=()=>`<div class="card"><h2>Ajouter une activité</h2><p class="mini">Choisis une séance de ton programme ou une activité sportive. Tu retrouveras son formulaire habituel et l'enregistrement à la date sélectionnée.</p><label>Activité<select id="free-select-10b"><optgroup label="Mes séances">${ALL_FREE10B.slice(0,13).map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('')}</optgroup><optgroup label="Cardio et sport">${SPORTS10B.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('')}</optgroup><optgroup label="Personnalisée"><option value="free39">Autre activité</option></optgroup></select></label><button class="primary" data-free-open-10b="1">Ouvrir l'activité</button><button data-free-close-10b="1">Annuler</button></div>`;
+let freeMenu10B=false;
+const oldToday10B=renderToday;
+renderToday=function(){let h=oldToday10B();const vac=v10Vacation(date);if(vac?.mode==='pause')return h;const block=`<div class="card"><button class="primary" data-free-toggle-10b="1">${freeMenu10B?'− Fermer les activités libres':'＋ Ajouter une activité libre'}</button>${freeMenu10B?FREE_MENU10B():''}</div>`;return h+block;};
+const oldSession10B=renderSession;
+renderSession=function(){const s=sessions.find(x=>x.id===openId);if(!s)return oldSession10B();let h;
+ if(SPORTS10B.some(([id])=>id===openId)){
+  const v=get(openId,date);
+  h=`<button data-back="1">← Retour</button><div class="card"><h2>${esc(s.name)}</h2><p class="mini">Enregistre uniquement les données dont tu disposes.</p><div class="grid">${formInput('Durée (minutes)','activityMinutes',v.activityMinutes??'')}${formInput('Distance (km) · facultatif','activityDistance',v.activityDistance??'')}${formInput('Calories affichées (kcal) · facultatif','calories',v.calories??'')}</div><label>Ressenti et commentaires<textarea data-field="notes">${esc(v.notes||'')}</textarea></label><button class="primary" data-save="1">✓ Terminer</button><button data-back="1">Retour</button></div>`;
+ }else h=oldSession10B();
+ // Retirer l'interface des échauffements guidés, sans modifier les anciennes données.
+ h=h.replace(/<div class="card"><b>Échauffement guidé · environ 5 min<\/b>[\s\S]*?<small id="warmupStatus" class="mini"><\/small><\/div>/g,'');
+ // Retirer toute consigne d'échauffement introduite comme bloc autonome.
+ h=h.replace(/<button[^>]*data-(?:skipwarmup|warmup)="[^"]*"[^>]*>[\s\S]*?<\/button>/g,'');
+ return h;
+};
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.hasAttribute('data-free-toggle-10b')){e.preventDefault();e.stopImmediatePropagation();freeMenu10B=!freeMenu10B;render();return}
+ if(b.hasAttribute('data-free-close-10b')){e.preventDefault();e.stopImmediatePropagation();freeMenu10B=false;render();return}
+ if(b.hasAttribute('data-free-open-10b')){e.preventDefault();e.stopImmediatePropagation();const id=document.querySelector('#free-select-10b')?.value;if(!sessions.some(s=>s.id===id))return;saveDraft();freeMenu10B=false;openId=id;render();scrollTo(0,0);return}
+ if(b.dataset.v10Free!==undefined){e.preventDefault();e.stopImmediatePropagation();freeMenu10B=true;render();document.querySelector('#free-select-10b')?.scrollIntoView({block:'center'});return}
+},true);
+// En mode vacances, les activités enregistrées restent visibles sans réactiver le planning.
+const oldTodayWithFree10B=renderToday;
+renderToday=function(){let h=oldTodayWithFree10B();const recorded=Object.entries(data.entries||{}).filter(([k,v])=>k.startsWith(date+'|')&&v?.done&&!all(date).some(s=>k.endsWith('|'+s.id)));if(recorded.length){h+=`<div class="card"><b>Autres activités enregistrées</b>${recorded.map(([k])=>{const id=k.split('|')[1],s=sessions.find(x=>x.id===id);return `<button class="today-task" data-open="${esc(id)}"><span>${esc(s?.name||id)} · ✓ Terminée</span><span>Voir ›</span></button>`}).join('')}</div>`}return h};
+
+
+// V5.3.3.10d TEST — rendre immédiatement visibles les activités libres terminées sur leur journée.
+// Les données restent dans entries[date|id] : aucun déplacement ni réécriture de l'historique.
+const v10dTodayBefore=renderToday;
+renderToday=function(){
+ let html=v10dTodayBefore();
+ const completed=Object.entries(data.entries||{}).filter(([key,entry])=>key.startsWith(date+'|')&&entry?.done);
+ if(!completed.length)return html;
+ const scheduledIds=new Set(all(date).map(s=>s.id));
+ const extra=completed.filter(([key])=>!scheduledIds.has(key.slice(11)));
+ if(!extra.length)return html;
+ const card=`<div class="card" id="v10d-activities"><h2>Activités ajoutées · ${esc(v10DateLabel(date))}</h2><p class="mini">${extra.length} activité${extra.length>1?'s':''} enregistrée${extra.length>1?'s':''} pour cette journée, y compris pendant les vacances.</p>${extra.map(([key,entry])=>{const id=key.slice(11),session=sessions.find(s=>s.id===id);const label=session?.name||entry.activityName||'Activité libre';return `<div class="row v10-action"><button data-open="${esc(id)}" style="flex:1;text-align:left"><b>✓ ${esc(label)}</b><br><small>Terminée · Voir les détails</small></button><button data-delete-entry-539c="${esc(key)}" class="delete-entry-539c">Supprimer</button></div>`}).join('')}</div>`;
+ // Présentation au-dessus des accès rapides et des réglages du jour, pas tout en bas.
+ const anchor='<div class="card"><b>Accès rapides</b>';
+ return html.includes(anchor)?html.replace(anchor,card+anchor):card+html;
+};
+// Confirmer la date de rattachement après validation d'une activité libre.
+// L'enregistrement est assuré par le gestionnaire existant data-save ; ce retour n'altère pas les données.
+const v10dRenderBefore=render;
+render=function(){v10dRenderBefore();};
 
 </script><script>if('serviceWorker' in navigator && location.protocol==='https:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script></body></html>
