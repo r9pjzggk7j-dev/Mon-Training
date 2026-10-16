@@ -1191,7 +1191,7 @@ render=function(){
    const workout=main?(main.name||'').split(/[—–-]/)[0].trim():'REPOS';
    const detail=main?(main.name||'').split(/[—–]/).slice(1).join(' — ').trim(): 'RÉCUPÉRATION';
    const readable=new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-   const version=hero.querySelector('small')?.outerHTML||'<small>MON TRAINING V5.3.4i TEST · STOCKAGE LOCAL</small>';
+   const version=hero.querySelector('small')?.outerHTML||'<small>MON TRAINING V5.3.4j TEST · STOCKAGE LOCAL</small>';
    hero.innerHTML=`${version}<div class="mt534f-brand">MON TRAINING</div><div class="mt534f-motto">DISCIPLINE · RIGUEUR · DÉTERMINATION</div><div class="mt534f-date">▦ &nbsp;${esc(readable.charAt(0).toUpperCase()+readable.slice(1))}</div><div class="mt534e-tricolor" aria-hidden="true"><i></i><i></i><i></i></div><div class="mt534f-mission">MISSION DU JOUR</div><div class="mt534f-rule"></div><div class="mt534f-workout">${esc(workout)}</div><div class="mt534f-detail">${esc(detail||'ENTRAÎNEMENT')}</div><blockquote>« ${esc(mt534cDailyPhrase(todayISO()))} »</blockquote>`;
    hero.classList.add('mt534f-home-hero');
   }
@@ -1227,7 +1227,7 @@ render=function(){
  app.querySelectorAll('.hero > small').forEach(el=>el.remove());
  if(view==='settings'&&!openId){
    const v=document.createElement('p');v.className='mt534h-version';
-   v.textContent='Mon Training V5.3.4i TEST · Stockage local';
+   v.textContent='Mon Training V5.3.4j TEST · Stockage local';
    app.appendChild(v);
  }
 };
@@ -1236,4 +1236,53 @@ mt534hStyle.textContent=`.mt534h-version{margin:20px 0 8px;text-align:center;col
 document.head.appendChild(mt534hStyle);
 render();
 const mt534iStyle=document.createElement('style');mt534iStyle.textContent="\n/* V5.3.4i — portrait personnel, lisibilité mobile et harmonisation bleue */\n.mt534f-home-hero:before{\n background-image:linear-gradient(180deg,rgba(4,10,24,.24) 0%,rgba(4,10,24,.30) 54%,rgba(3,9,20,.80) 100%),url('./hero-photo.webp')!important;\n background-size:cover!important;background-position:73% center!important;\n}\n.mt534f-home-hero:after{background:radial-gradient(ellipse at 52% 58%,rgba(2,7,17,.24),transparent 80%)!important}\n.mt534f-brand{margin-top:29px!important;position:relative;z-index:1}\n.mt534f-motto,.mt534f-date,.mt534f-mission,.mt534f-workout,.mt534f-detail{position:relative;z-index:1;text-shadow:0 2px 8px #000,0 0 15px #000a}\n.today-progress span,.bar i{background:#277bf0!important}\n.today-task-action{color:#66a9ff!important}\nbutton.primary{background:#266ac4!important;border-color:#458de9!important;color:#fff!important}\nbutton.done,.days button.active{background:#234e89!important;color:#fff!important}\n.tabs button.active,.today-overview-head small{color:#6daaff!important}\n.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,rgba(3,10,22,.18),rgba(3,10,22,.40)),url('./banner-photo.webp')!important;background-position:68% center!important;background-size:cover!important}\n@media(max-width:600px){\n .mt534f-home-hero:before{background-position:71% center!important}\n .mt534f-home-hero{min-height:420px!important}\n .mt534f-brand{margin-top:27px!important}\n .mt534f-workout{font-size:clamp(46px,14vw,78px)}\n}\n";document.head.appendChild(mt534iStyle);
+
+/* V5.3.4j — bandeaux secondaires compacts et nets sur iPhone */
+const mt534jStyle=document.createElement('style');
+mt534jStyle.textContent=`
+/* Le grand bandeau Mission du jour reste inchangé. */
+.hero:not(.mt534f-home-hero){
+ min-height:0!important;
+ height:auto!important;
+ padding:15px 17px!important;
+ margin-bottom:16px!important;
+ overflow:hidden!important;
+ background-image:linear-gradient(90deg,rgba(5,14,31,.80) 0%,rgba(5,14,31,.62) 56%,rgba(5,14,31,.18) 100%),url('./banner-photo.webp')!important;
+ background-position:68% 42%!important;
+ background-size:cover!important;
+ background-repeat:no-repeat!important;
+}
+.hero:not(.mt534f-home-hero):before,
+.hero:not(.mt534f-home-hero):after{display:none!important}
+.hero:not(.mt534f-home-hero) h1{
+ position:relative!important;
+ font-size:clamp(20px,5vw,27px)!important;
+ line-height:1.2!important;
+ margin:0 0 5px!important;
+ padding:0!important;
+ text-shadow:0 1px 2px #0009!important;
+ filter:none!important;
+ -webkit-filter:none!important;
+}
+.hero:not(.mt534f-home-hero) .mini,
+.hero:not(.mt534f-home-hero) span{
+ position:relative!important;
+ display:block!important;
+ font-size:clamp(11px,3.1vw,13px)!important;
+ line-height:1.35!important;
+ text-shadow:0 1px 2px #000b!important;
+ filter:none!important;
+}
+@media(max-width:600px){
+ .hero:not(.mt534f-home-hero){
+   padding:12px 15px!important;
+   min-height:0!important;
+   max-height:none!important;
+   background-position:66% 42%!important;
+ }
+ .hero:not(.mt534f-home-hero) h1{font-size:21px!important}
+ .hero:not(.mt534f-home-hero) .mini{font-size:12px!important}
+}
+`;
+document.head.appendChild(mt534jStyle);
 </script><script>if('serviceWorker' in navigator && location.protocol==='https:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script></body></html>
