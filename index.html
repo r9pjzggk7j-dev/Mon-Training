@@ -884,4 +884,355 @@ renderToday=function(){
 const v10dRenderBefore=render;
 render=function(){v10dRenderBefore();};
 
+
+// V5.3.4 — amélioration de l'ergonomie, statistiques mensuelles et partage iOS.
+const MT534 = true;
+const mt534ActiveEntries=()=>Object.entries(data.entries||{}).filter(([key,v])=>v&&v.done&&!data.ignoredActivities?.[key]);
+const mt534Category=(id)=>{const sess=sessions.find(s=>s.id===id);const name=(sess?.name||id).toLowerCase();if(/stretch|étirement/.test(name))return 'Étirements';if(/mob|mobilité/.test(name))return 'Mobilité';if(/rééduc|genou|lower39/.test(name))return 'Rééducation';if(sess?.kind==='strength'||/push|pull|upper|legs|musculation/.test(name)&&!/pompe/.test(name))return 'Musculation';if(sess?.kind==='bike'||/bikeerg/.test(name))return 'BikeErg';if(sess?.kind==='pushups'||/pompe/.test(name))return 'Pompes';if(sess?.kind==='wod'||/wod/.test(name))return 'WOD';if(/course|running/.test(name))return 'Course à pied';return 'Autres sports';};
+const mt534IsSport=(id)=>!['Mobilité','Étirements','Rééducation'].includes(mt534Category(id));
+const mt534ValidKeys=()=>mt534ActiveEntries().map(([k])=>k);
+const mt534SavedDates=()=>[...new Set(mt534ValidKeys().map(k=>k.slice(0,10)))].sort().reverse();
+// Affichage fiable en cas de refus d'accès au presse-papiers sur iOS.
+function mt534ShowCopy(text,title){let old=document.querySelector('#mt534-share');if(old)old.remove();const overlay=document.createElement('div');overlay.id='mt534-share';overlay.innerHTML=`<div class="mt534-dialog" role="dialog" aria-modal="true"><h2>${esc(title)}</h2><p class="mini" id="mt534-copy-status">Le texte est prêt. Tu peux le copier ou le partager.</p><textarea id="mt534-copy-content" readonly aria-label="Texte à partager"></textarea><div class="actions"><button class="primary" type="button" id="mt534-copy-now">Copier le texte</button><button type="button" id="mt534-native-share">Partager…</button><button type="button" id="mt534-select">Tout sélectionner</button></div><button type="button" id="mt534-close">Fermer</button></div>`;document.body.append(overlay);overlay.querySelector('textarea').value=text;overlay.querySelector('#mt534-copy-now').onclick=async()=>{let ok=false;try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);ok=true}}catch(err){}if(!ok){const ta=overlay.querySelector('textarea');ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);try{ok=document.execCommand('copy')}catch(err){}}overlay.querySelector('#mt534-copy-status').textContent=ok?'✓ Texte copié. Colle-le dans ChatGPT.':'Copie automatique indisponible : appuie sur « Tout sélectionner », puis « Copier » dans le menu iPhone.'};overlay.querySelector('#mt534-select').onclick=()=>{const ta=overlay.querySelector('textarea');ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length)};overlay.querySelector('#mt534-native-share').onclick=async()=>{try{if(navigator.share)await navigator.share({title,text});else overlay.querySelector('#mt534-copy-status').textContent='Le partage natif n’est pas disponible sur cet appareil.'}catch(err){}};overlay.querySelector('#mt534-close').onclick=()=>overlay.remove();overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});}
+function mt534ExportText(kind){const selected=document.querySelector('#sessionDate')?.value;let keys,title;
+ if(kind==='copySession'){keys=mt534ValidKeys().filter(k=>k.startsWith(selected+'|'));title='Ma séance du '+selected;}
+ else if(kind==='copyHistory'){const from=document.querySelector('#fromDate')?.value,to=document.querySelector('#toDate')?.value;if(!from||!to||from>to){alert('Choisis une période valide.');return}keys=mt534ValidKeys().filter(k=>k.slice(0,10)>=from&&k.slice(0,10)<=to).sort();title='Historique Mon Training du '+from+' au '+to;}
+ else{const from=plus(todayISO(),-55);keys=mt534ValidKeys().filter(k=>k.slice(0,10)>=from).sort();title='DOSSIER MON TRAINING — Coaching ChatGPT';}
+ if(!keys.length){alert('Aucune séance terminée à exporter pour cette sélection.');return}
+ const uniqueDays=new Set(keys.filter(k=>mt534IsSport(k.split('|')[1])).map(k=>k.slice(0,10))).size;
+ const rows=keys.map(k=>formatEntry(k,data.entries[k])).join('\n');
+ let report=title+'\n'+keys.length+' activités terminées • '+uniqueDays+' jours de sport.\n'+rows;
+ if(kind==='coachExport'){const program=Object.keys(EX).map(id=>id.toUpperCase()+' : '+activeEx(id).map(ex=>`${ex[0]} ${ex[2]}×${ex[4]} à ${ex[3]||'?'} kg`).join(' ; ')).join('\n');report=title+'\nPROGRAMME ACTUEL\n'+program+'\nHISTORIQUE 8 SEMAINES\n'+rows;}
+ mt534ShowCopy(report,title);
+}
+// Intercepter AVANT les anciens écouteurs ; une seule logique d'export.
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!['copySession','copyHistory','coachExport'].includes(b.id))return;e.preventDefault();e.stopImmediatePropagation();mt534ExportText(b.id)},true);
+const mt534SettingsBefore=renderSettings;
+renderSettings=function(){let html=mt534SettingsBefore();const dates=mt534SavedDates();html=html.replace(/(<select id="sessionDate">)[\s\S]*?(<\/select>)/,(_m,a,z)=>a+(dates.length?dates.map(d=>`<option value="${d}">${d}</option>`).join(''):`<option value="${todayISO()}">${todayISO()}</option>`)+z);return html};
+// Liste alphabétique unique, recherche conservée.
+const mt534LexBefore=lexItems;
+lexItems=function(q){const norm=x=>String(x).toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'');const sorted=[...LEXICON].sort((a,b)=>a[0].localeCompare(b[0],'fr',{sensitivity:'base'}));return sorted.filter(x=>norm(x[0]).includes(norm(q||''))).map(x=>`<details class="card"><summary><b>${esc(x[0])}</b> ▾</summary><p><b>Muscles / objectif :</b> ${esc(x[1])}</p><p><b>Exécution :</b> ${esc(x[2])}</p><p><b>Attention :</b> ${esc(x[3])}</p>${videoBlock(x[0])}</details>`).join('')||'<p class="muted">Aucun exercice trouvé.</p>'};
+// Évolution mensuelle : les jours sportifs distincts ne sont pas le nombre d'activités.
+const mt534ProgressBefore=renderProgress;
+renderProgress=function(){const base=mt534ProgressBefore();const now=todayISO().slice(0,7);const months=Array.from({length:12},(_,i)=>{const [y,m]=now.split('-').map(Number);const d=new Date(y,m-1-(11-i),1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')});const active=mt534ActiveEntries();const counts=months.map(m=>{const entries=active.filter(([k])=>k.startsWith(m));return {month:m,days:new Set(entries.filter(([k])=>mt534IsSport(k.split('|')[1])).map(([k])=>k.slice(0,10))).size,entries}});const selected=months.includes(data.mt534SelectedMonth)?data.mt534SelectedMonth:now;const focus=counts.find(x=>x.month===selected);const byCategory={};for(const [key,v] of focus.entries){const category=mt534Category(key.split('|')[1]);byCategory[category]=(byCategory[category]||0)+1;if(v.stretchesDone&&category!=='Étirements')byCategory['Étirements']=(byCategory['Étirements']||0)+1}const max=Math.max(1,...counts.map(x=>x.days));const monthLabel=m=>new Date(m+'-01T12:00:00').toLocaleDateString('fr-FR',{month:'short'});const chart=`<div class="card" id="mt534-months"><h2>Jours de sport par mois</h2><p class="mini">Un jour est compté une seule fois, même si plusieurs activités sont réalisées. Mobilité, étirements et rééducation restent détaillés mais ne créent pas seuls un jour de sport.</p><div class="mt534-month-bars">${counts.map(x=>`<button type="button" data-mt534-month="${x.month}" class="mt534-month ${x.month===selected?'selected':''}" title="${x.month} : ${x.days} jours"><b>${x.days}</b><i style="height:${Math.max(4,Math.round(x.days/max*110))}px"></i><small>${monthLabel(x.month)}</small></button>`).join('')}</div><h3>${new Date(selected+'-01T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'})} · ${focus.days} jour${focus.days>1?'s':''} de sport</h3>${Object.entries(byCategory).sort((a,b)=>a[0].localeCompare(b[0],'fr')).map(([name,count])=>`<div class="row mt534-cat"><span>${esc(name)}</span><b>${count} séance${count>1?'s':''}</b></div>`).join('')||'<p class="mini">Aucune activité terminée pour ce mois.</p>'}</div>`;
+ // Retirer le graphique 8 semaines, sans supprimer les autres graphiques et l'historique.
+ return chart+base.replace(/<div class="card"><div class="row"><b>Évolution sur 8 semaines<\/b>[\s\S]*?<p class="mini">Données issues uniquement des séances terminées\. Les vacances ne sont pas comptées comme des séances manquées\.<\/p><\/div>/,'');
+};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-mt534-month]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();data.mt534SelectedMonth=b.dataset.mt534Month;persist();render()},true);
+// Ajustements ponctuels : ne jamais modifier EX ni programOverrides par accident.
+const mt534SessionBefore=renderSession;
+renderSession=function(){let html=mt534SessionBefore();const s=sessions.find(x=>x.id===openId);if(s?.kind!=='strength')return html;const record=get(openId,date);const exs=record.done&&record.exerciseSnapshot?record.exerciseSnapshot:activeEx(openId);const pieces=html.split('<div class="exercise">');for(let j=1;j<pieces.length;j++){const i=j-1,ex=exs[i];if(!ex)continue;if(record.hiddenExercises?.[i]){pieces[j]='<!--MT534HIDDEN-->'+pieces[j];continue}
+ const name=ex[0];const savedMode=record.exerciseModes?.[i];const mode=savedMode||(/gainage|planche|chaise contre|équilibre sur coussin|isométrie/i.test(name)?'duration':'reps');const choice=`<div class="row mt534-controls"><label>Mesure<select data-mt534-mode="${i}"><option value="reps" ${mode==='reps'?'selected':''}>Répétitions</option><option value="duration" ${mode==='duration'?'selected':''}>Durée (secondes)</option></select></label><button type="button" data-mt534-remove-ex="${i}">Retirer de cette séance</button></div>`;
+ pieces[j]=pieces[j].replace('</p>','</p>'+choice);
+ if(mode==='duration'){pieces[j]=pieces[j].replace(/<label>Répétitions<input/g,'<label>Durée (secondes)<input').replace(/<label>Série \d+ · kg<input[^>]*><\/label>/g,'')}
+ // Le RPE n'est proposé que sur la dernière série visible.
+ const rpes=[...pieces[j].matchAll(/<label>RPE<input[^>]*data-field="sets\.(\d+)\.(\d+)\.rpe"[^>]*><\/label>/g)];for(const match of rpes.slice(0,-1)){pieces[j]=pieces[j].replace(match[0],'')}
+ pieces[j]=pieces[j].replace(/(<button data-addset="\d+">[^<]*<\/button>)/,`$1<button type="button" data-mt534-minus-set="${i}">− Supprimer la dernière série</button>`);
+ }
+ html=pieces.join('<div class="exercise">').replace(/<div class="exercise"><!--MT534HIDDEN-->/g,'<div class="exercise" style="display:none">');const permanent=`<details class="card"><summary><b>Modifier définitivement le programme</b></summary><p class="mini">Les changements s'appliqueront aux futures séances uniquement. Les anciennes performances restent conservées.</p>${activeEx(openId).map((ex,i)=>`<div class="mt534-perm"><b>${esc(ex[0])}</b><label>Nombre de séries<input type="number" min="1" max="12" data-mt534-perm-sets="${i}" value="${ex[2]}"></label><label>Répétitions cibles<input type="number" min="1" max="300" data-mt534-perm-reps="${i}" value="${ex[4]}"></label></div>`).join('')}<button type="button" data-mt534-save-program="1">Enregistrer définitivement</button></details>`;return html+permanent};
+document.addEventListener('change',e=>{const el=e.target.closest('[data-mt534-mode]');if(!el||!openId)return;saveDraft();const v=get(openId,date),modes={...(v.exerciseModes||{})};modes[el.dataset.mt534Mode]=el.value;set(openId,date,{exerciseModes:modes});render()},true);
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!openId)return;const idx=b.dataset.mt534RemoveEx??b.dataset.mt534MinusSet;
+ if(idx!==undefined){e.preventDefault();e.stopImmediatePropagation();const i=Number(idx);if(!Number.isInteger(i)||i<0)return;
+ if(b.dataset.mt534RemoveEx!==undefined){if(!confirm('Retirer cet exercice uniquement de la séance du jour ?'))return;saveDraft();const v=get(openId,date),hidden={...(v.hiddenExercises||{})};hidden[i]=true;set(openId,date,{hiddenExercises:hidden});render();return}
+ saveDraft();const v=get(openId,date),ex=activeEx(openId)[i];if(!ex)return;const extras=Array.isArray(v.extraSets)?[...v.extraSets]:{...(v.extraSets||{})};const current=Math.max(1,ex[2]+Number(extras[i]||0));if(current<=1){alert('Conserve au moins une série ou retire l’exercice.');return}
+ extras[i]=Number(extras[i]||0)-1;const sets=[...(v.sets||[])];sets[i]=[...(sets[i]||[])].slice(0,current-1);set(openId,date,{extraSets:extras,sets});render();return}
+ if(b.dataset.mt534SaveProgram!==undefined){e.preventDefault();e.stopImmediatePropagation();if(!confirm('Modifier définitivement le programme pour les prochaines séances ?'))return;saveDraft();const prev=structuredClone(data.programOverrides||{});data.programOverrides||={};for(const el of document.querySelectorAll('[data-mt534-perm-sets]')){const i=Number(el.dataset.mt534PermSets),ex=currentEx(openId,i);if(!ex)continue;const repsEl=document.querySelector(`[data-mt534-perm-reps="${i}"]`);const n=Number(el.value),reps=Number(repsEl?.value);if(!Number.isInteger(n)||n<1||n>12||!Number.isInteger(reps)||reps<1||reps>300){alert('Vérifie les séries et les répétitions.');return}data.programOverrides[openId+'|'+i]={name:ex[0],description:ex[1],sets:n,kg:ex[3],reps,rest:ex[5]}}data.programHistory||=[];data.programHistory.push({type:'coach-batch',previous:prev,previousCycleStart:data.cycleStart,at:new Date().toISOString()});persist();render();alert('Programme mis à jour pour les prochaines séances.');return}
+},true);
+// Export : ne pas afficher un exercice retiré de la séance du jour.
+const mt534FormatBefore=formatEntry;
+formatEntry=function(k,v){const base=mt534FormatBefore(k,v);if(!v.hiddenExercises||!Object.values(v.hiddenExercises).some(Boolean))return base;const [d,id]=k.split('|');const snap=v.exerciseSnapshot||activeEx(id);const lines=(v.sets||[]).map((rows,i)=>{if(v.hiddenExercises[i]||!rows?.length)return '';const ex=snap[i];return `${ex?.[0]||'Exercice '+(i+1)} : ${rows.map(r=>`${r.kg||'?'}kg×${r.reps||'?'}${r.rpe?' RPE'+r.rpe:''}`).join(', ')}`}).filter(Boolean).join('; ');return base.replace(base.split('\n')[1]||'',lines)};
+const mt534CSS=document.createElement('style');mt534CSS.textContent=`#mt534-share{position:fixed;inset:0;z-index:99999;background:#000c;display:flex;align-items:center;justify-content:center;padding:16px}.mt534-dialog{background:#24272d;border:1px solid #777;border-radius:16px;padding:18px;width:min(600px,100%);max-height:92vh;overflow:auto}.mt534-dialog textarea{width:100%;height:38vh;min-height:180px;font-size:13px;line-height:1.4;user-select:text;-webkit-user-select:text}.mt534-dialog .actions{display:flex;flex-wrap:wrap;gap:7px}.mt534-month-bars{display:flex;gap:3px;align-items:end;overflow-x:auto;padding:15px 0}.mt534-month{min-width:0;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:end;gap:5px;padding:6px 1px;border:1px solid transparent;background:transparent}.mt534-month.selected{border-color:var(--accent);border-radius:7px}.mt534-month i{display:block;background:var(--accent);width:80%;max-width:30px;border-radius:4px 4px 0 0}.mt534-month small{font-size:9px}.mt534-month b{font-size:12px}.mt534-cat{border-top:1px solid #555;padding:8px 0}.mt534-controls{gap:8px;align-items:end;flex-wrap:wrap;margin:8px 0}.mt534-controls label{flex:1}.mt534-controls button{font-size:12px}.mt534-perm{border-top:1px solid #555;padding:12px 0}.mt534-perm label{margin:7px 0}`;document.head.append(mt534CSS);
+const mt534HeaderBefore=header;header=function(){return mt534HeaderBefore().replace('MON TRAINING V5.3.3.8','MON TRAINING V5.3.4')};
+
+
+// V5.3.4b — correctifs après essais utilisateur, non destructifs.
+// Mesure automatique : jamais de choix manuel pendant l'entraînement.
+function mt534bUnit(name){return /gainage|planche|chaise contre|équilibre sur coussin|isométrie|maintien|statique/i.test(name)?'duration':'reps'}
+const mt534bSessionBefore=renderSession;
+renderSession=function(){
+ let h=mt534bSessionBefore();const s=sessions.find(x=>x.id===openId);if(s?.kind!=='strength')return h;
+ const v=get(openId,date),exs=v.done&&v.exerciseSnapshot?v.exerciseSnapshot:activeEx(openId);
+ // Éliminer les contrôles de mesure et la mention de démarrage, conserver le chronomètre de repos.
+ h=h.replace(/<label>Mesure<select data-mt534-mode="\d+">[\s\S]*?<\/select><\/label>/g,'');
+ h=h.replace(/(<button data-timer="[^"]+">)⏱ Démarrer(<\/button>)/g,'$1⏱ Repos$2');
+ h=h.replace(/Retirer de cette séance/g,'Retirer l’exercice');
+ // L'ancienne version masque les exercices retirés ; proposer une restauration fidèle.
+ const hidden=Object.keys(v.hiddenExercises||{}).filter(i=>v.hiddenExercises[i]);
+ if(hidden.length){const restored=`<div class="card"><b>Exercices retirés de cette séance</b><p class="mini">Restaurer conserve les séries, charges et répétitions saisies.</p>${hidden.map(i=>`<div class="row"><span>${esc(exs[Number(i)]?.[0]||'Exercice '+(Number(i)+1))}</span><button type="button" data-mt534b-restore="${i}">↶ Restaurer</button></div>`).join('')}</div>`;h=h.replace(/(<details class="card"><summary><b>Modifier définitivement le programme)/,restored+'$1');}
+ // Rendre la durée automatique pour les exercices statiques, y compris après ajout de série.
+ const pieces=h.split('<div class="exercise"');for(let i=1;i<pieces.length;i++){
+   const name=pieces[i].match(/<b>([^<]+)<\/b>/)?.[1]||'';
+   if(mt534bUnit(name)==='duration'){
+     pieces[i]=pieces[i].replace(/<label>Répétitions<input/g,'<label>Durée (secondes)<input');
+     pieces[i]=pieces[i].replace(/<label>Série \d+ · kg<input[^>]*><\/label>/g,'');
+   }
+ }
+ return pieces.join('<div class="exercise"');
+};
+// Gestion des suppressions : corriger le décompte des séries et ne jamais effacer une saisie lors du retrait d'exercice.
+// Le gestionnaire V5.3.4 initial est remplacé par celui-ci (son bloc d'écoute est retiré lors de la construction).
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b||!openId)return;
+ if(b.dataset.mt534bRestore!==undefined){e.preventDefault();e.stopImmediatePropagation();saveDraft();const v=get(openId,date),hidden={...(v.hiddenExercises||{})};delete hidden[Number(b.dataset.mt534bRestore)];set(openId,date,{hiddenExercises:hidden});render();return}
+},true);
+// Remettre l'outil « Remplacer sans doublon » dans la vue actuelle, y compris après le 19 octobre.
+const mt534bTodayBefore=renderToday;
+renderToday=function(){let h=mt534bTodayBefore();if(date<V539_START)return h;const ids=all(date).filter(s=>!data.ignoredActivities?.[date+'|'+s.id]);
+ const available=sessions.filter(s=>s.id!=='rest'&&s.kind&&s.name).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+ const panel=`<div class="card" id="mt534b-replace"><details><summary><b>Adapter mon planning · Remplacer sans doublon</b></summary><p class="mini">Modification uniquement pour le jour sélectionné. Les autres semaines ne changent pas.</p><label>Activité à remplacer<select id="mt534b-old">${ids.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></label><label>Nouvelle activité<select id="mt534b-new">${available.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></label><button type="button" class="primary" data-mt534b-replace="1" ${ids.length?'':'disabled'}>Remplacer sans doublon</button></details></div>`;
+ const anchor='<div class="card"><b>Accès rapides</b>';return h.includes(anchor)?h.replace(anchor,panel+anchor):h+panel;
+};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-mt534b-replace]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();const old=document.querySelector('#mt534b-old')?.value,newId=document.querySelector('#mt534b-new')?.value;if(!old||!newId||old===newId)return;
+ const ids=all(date).map(s=>s.id);const pos=ids.indexOf(old);if(pos<0)return;if(get(old,date).done&&!confirm('Cette activité est déjà terminée. Remplacer son emplacement dans le planning sans effacer ses résultats ?'))return;
+ ids.splice(pos,1);if(!ids.includes(newId))ids.splice(pos,0,newId);data.schedule||={};data.schedule[date]=ids;persist();render();},true);
+// Un seul menu de partage des entraînements, dossier ChatGPT conservé pour programme + historique.
+const mt534bSettingsBefore=renderSettings;
+renderSettings=function(){let h=mt534bSettingsBefore();const a=h.indexOf('<div class="card"><h3>Copier ma séance</h3>');const z=h.indexOf('<div class="card"><h3>Coaching ChatGPT</h3>');if(a<0||z<0)return h;
+ const dates=mt534SavedDates();const options=dates.length?dates.map(d=>`<option value="${d}">${d}</option>`).join(''):`<option value="${todayISO()}">${todayISO()}</option>`;
+ const share=`<div class="card"><h3>Partager mes entraînements</h3><p class="mini">Choisis ce que tu veux envoyer, puis copie ou partage le texte.</p><label>Période<select id="mt534b-share-type"><option value="session">Une journée</option><option value="7">7 derniers jours</option><option value="30" selected>30 derniers jours</option><option value="custom">Période personnalisée</option></select></label><div id="mt534b-share-session" class="hide"><label>Date<select id="sessionDate">${options}</select></label></div><div id="mt534b-share-custom" class="hide"><div class="two-dates"><label>Du<input type="date" id="fromDate" value="${plus(todayISO(),-29)}"></label><label>Au<input type="date" id="toDate" value="${todayISO()}"></label></div></div><button type="button" class="primary" id="mt534b-share-go">Copier mes entraînements</button></div>`;
+ h=h.slice(0,a)+share+h.slice(z);h=h.replace('<h3>Coaching ChatGPT</h3>','<h3>Bilan complet pour ChatGPT</h3>');return h;
+};
+function mt534bShareToggle(){const val=document.querySelector('#mt534b-share-type')?.value;document.querySelector('#mt534b-share-session')?.classList.toggle('hide',val!=='session');document.querySelector('#mt534b-share-custom')?.classList.toggle('hide',val!=='custom')}
+document.addEventListener('change',e=>{if(e.target.id==='mt534b-share-type')mt534bShareToggle()});
+document.addEventListener('click',e=>{if(e.target.closest('#mt534b-share-go')){e.preventDefault();e.stopImmediatePropagation();const mode=document.querySelector('#mt534b-share-type')?.value;if(mode==='session'){mt534ExportText('copySession');return}if(mode==='7'||mode==='30'){const from=document.querySelector('#fromDate'),to=document.querySelector('#toDate');if(from)from.value=plus(todayISO(),1-Number(mode));if(to)to.value=todayISO()}mt534ExportText('copyHistory')}},true);
+const mt534bRenderBefore=render;
+render=function(){mt534bRenderBefore();if(!openId&&view==='settings')mt534bShareToggle()};
+const mt534bHeaderBefore=header;header=function(){return mt534bHeaderBefore().replace('V5.3.4','V5.3.4b TEST')};
+
+
+// V5.3.4c TEST — ergonomie et identité visuelle (sans modification du stockage).
+const mt534cPhrases=[
+ 'La discipline fait la différence.',
+ 'La rigueur d’aujourd’hui construit la force de demain.',
+ 'Chaque répétition renforce ta détermination.',
+ 'La constance est ta meilleure arme.',
+ 'L’effort forge le caractère.',
+ 'La mission du jour : progresser.',
+ 'La détermination ne se négocie pas.',
+ 'Un objectif. Une mission. Une séance.',
+ 'La force se construit dans la régularité.',
+ 'Garde le cap, termine la mission.',
+ 'La discipline transforme les intentions en résultats.',
+ 'Avance avec méthode, progresse avec patience.'
+];
+function mt534cDailyPhrase(d){let n=0;for(const ch of d)n=(n*31+ch.charCodeAt(0))>>>0;return mt534cPhrases[n%mt534cPhrases.length]}
+const mt534cRenderSessionBefore=renderSession;
+renderSession=function(){let h=mt534cRenderSessionBefore();if(!openId)return h;
+ const s=sessions.find(x=>x.id===openId);if(!s)return h;
+ const banner=`<section class="mt534c-mission"><div class="mt534c-mission-top">MON TRAINING <span>DISCIPLINE · RIGUEUR · DÉTERMINATION</span></div><div class="mt534c-flagmark" aria-label="Drapeau français"><i></i><i></i><i></i></div><div class="mt534c-mission-label">MISSION DU JOUR</div><div class="mt534c-mission-name">${esc(s.name)}</div><blockquote>« ${esc(mt534cDailyPhrase(date))} »</blockquote></section>`;
+ // Garder les contrôles data-timer dans le DOM pour le démarrage automatique des séries.
+ return h.replace(/(<button data-back="1">← Retour<\/button>)/, '$1'+banner);
+};
+const mt534cRenderBefore=render;
+render=function(){
+ if(view==='week')view='today';
+ mt534cRenderBefore();
+ const nav=document.querySelector('#tabs [data-tab="week"]');if(nav)nav.remove();
+ const app=document.querySelector('#app');let top=document.querySelector('#mt534c-sticky');
+ if(openId){if(!top){top=document.createElement('div');top.id='mt534c-sticky';document.body.append(top)}
+ const s=sessions.find(x=>x.id===openId),v=get(openId,date);const pref=Number(data.restPrefs?.[openId+'|0']);const ex=activeEx(openId)?.[0];const secs=Number.isFinite(pref)&&pref>0?pref:(Number(ex?.[5])||120);
+ top.innerHTML=`<button type="button" data-mt534c-clock="${secs}" aria-label="Ouvrir le chronomètre">⏱ Chronomètre</button>`;
+ }else if(top)top.remove();
+};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-mt534c-clock]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();
+ const t=document.querySelector('#timer');if(t?.classList.contains('show')){t.classList.add('large');t.scrollIntoView?.({block:'nearest'});return}
+ startTimer(Number(b.dataset.mt534cClock)||120);
+},true);
+const mt534cStyle=document.createElement('style');mt534cStyle.textContent=`
+/* Les minuteries internes restent présentes pour lancer automatiquement le repos après validation. */
+.exercise > .row > button[data-timer]{display:none!important}
+#mt534c-sticky{position:fixed;top:calc(env(safe-area-inset-top) + 8px);right:max(12px,calc((100vw - 650px)/2 + 14px));z-index:20;pointer-events:none}
+#mt534c-sticky button{pointer-events:auto;padding:9px 13px;border-radius:999px;background:#202a37ee;border:1px solid #6481a6;color:#fff;box-shadow:0 5px 18px #0009;font-size:13px;font-weight:700;backdrop-filter:blur(10px)}
+.mt534c-mission{position:relative;overflow:hidden;isolation:isolate;border-radius:18px;padding:25px 17px 19px;margin:13px 0 16px;text-align:center;background:linear-gradient(to bottom,#0c1725 0%,#11151d 65%,#1d2025 100%);border:1px solid #343c49;box-shadow:0 10px 26px #0005}
+.mt534c-mission:before{content:'';position:absolute;inset:0 0 22% 0;z-index:-1;background:linear-gradient(90deg,rgba(15,56,126,.46) 0%,rgba(21,55,108,.20) 32%,rgba(235,237,241,.12) 48%,rgba(198,45,48,.19) 69%,rgba(150,22,31,.43) 100%);mask-image:linear-gradient(to bottom,#000 0%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,#000 0%,transparent 100%)}
+.mt534c-mission-top{font-size:21px;font-weight:850;letter-spacing:.08em;color:#fff;text-shadow:0 2px 8px #000a;padding-top:6px}
+.mt534c-mission-top span{display:block;margin-top:6px;font-size:9px;font-weight:600;letter-spacing:.17em;color:#d7dce4}
+.mt534c-flagmark{display:flex;width:38px;height:5px;margin:23px auto 12px;overflow:hidden;border-radius:1px}.mt534c-flagmark i{flex:1}.mt534c-flagmark i:nth-child(1){background:#2257ad}.mt534c-flagmark i:nth-child(2){background:#fff}.mt534c-flagmark i:nth-child(3){background:#e63e4b}
+.mt534c-mission-label{font-size:12px;letter-spacing:.29em;color:#e2e7ee}.mt534c-mission-name{font-size:clamp(23px,6vw,34px);font-weight:850;text-transform:uppercase;margin:14px 0;letter-spacing:.06em}
+.mt534c-mission blockquote{margin:12px 0 0;padding:12px 8px;border:1px solid #ffffff18;border-radius:10px;background:#151a21a6;font-size:15px;font-style:italic;line-height:1.5}
+`;document.head.append(mt534cStyle);
+const mt534cHeaderBefore=header;header=function(){return mt534cHeaderBefore().replace('V5.3.4b TEST','V5.3.4c TEST')};
+render();
+
+// V5.3.4d TEST — identité globale, accueil mission et chronomètre manuel indépendant.
+const mt534dSessionBefore=renderSession;
+renderSession=function(){return mt534dSessionBefore().replace(/<section class="mt534c-mission">[\s\S]*?<\/section>/,'')};
+const mt534dTodayBefore=renderToday;
+renderToday=function(){let h=mt534dTodayBefore();
+ // Une seule porte d'entrée pour ajouter des activités ; les raccourcis restent dans le menu.
+ h=h.replace(/<div class="card"><b>Accès rapides<\/b><div class="choice39">[\s\S]*?<\/div><\/div>/,'');
+ h=h.replace('＋ Ajouter une activité libre','＋ Ajouter une activité');
+ return h;
+};
+let mt534dClockMs=0,mt534dClockStarted=0,mt534dClockRunning=false,mt534dClockExpanded=false;
+function mt534dElapsed(){return mt534dClockMs+(mt534dClockRunning?performance.now()-mt534dClockStarted:0)}
+function mt534dClockText(){const sec=Math.floor(mt534dElapsed()/1000);return `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`}
+function mt534dClockRender(){const el=document.querySelector('#mt534c-sticky');if(!el)return;
+ el.innerHTML=`<button type="button" data-mt534d-expand="1" aria-expanded="${mt534dClockExpanded}">⏱ <span id="mt534d-time">${mt534dClockText()}</span></button>${mt534dClockExpanded?`<div class="mt534d-clock-menu"><b>Chronomètre manuel</b><div class="mt534d-clock-actions"><button data-mt534d-toggle="1">${mt534dClockRunning?'Pause':'Démarrer'}</button><button data-mt534d-reset="1">Zéro</button></div><small>Indépendant du repos automatique.</small></div>`:''}`;
+}
+const mt534dRenderBefore=render;
+render=function(){mt534dRenderBefore();
+ const app=document.querySelector('#app');if(!app)return;
+ // Le drapeau est présent dans tous les onglets ; seul l'accueil montre la mission et la citation.
+ if(!openId&&view==='today'){
+  const existing=app.querySelector('.hero');if(existing){existing.insertAdjacentHTML('afterend',`<section class="mt534c-mission mt534d-home-mission"><div class="mt534c-mission-label">MISSION DU JOUR</div><div class="mt534c-flagmark" aria-hidden="true"><i></i><i></i><i></i></div><blockquote>« ${esc(mt534cDailyPhrase(todayISO()))} »</blockquote></section>`)}
+ }
+ if(openId){mt534dClockRender()}else{mt534dClockExpanded=false}
+};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-mt534d-expand],[data-mt534d-toggle],[data-mt534d-reset]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();
+ if(b.hasAttribute('data-mt534d-expand'))mt534dClockExpanded=!mt534dClockExpanded;
+ if(b.hasAttribute('data-mt534d-toggle')){if(mt534dClockRunning){mt534dClockMs=mt534dElapsed();mt534dClockRunning=false}else{mt534dClockStarted=performance.now();mt534dClockRunning=true}}
+ if(b.hasAttribute('data-mt534d-reset')){mt534dClockMs=0;if(mt534dClockRunning)mt534dClockStarted=performance.now()}
+ mt534dClockRender();
+},true);
+setInterval(()=>{if(!openId)return;const el=document.querySelector('#mt534d-time');if(el)el.textContent=mt534dClockText()},250);
+const mt534dStyle=document.createElement('style');mt534dStyle.textContent=`
+/* Identité tricolore cohérente sur toutes les pages, sans masque au-dessus du contenu. */
+body{background:#10141c}
+.hero{position:relative;overflow:hidden;isolation:isolate;background:linear-gradient(180deg,#101b2c,#1b2028 94%);border:1px solid #354254}
+.hero:before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(90deg,rgba(18,61,133,.46),rgba(225,231,237,.11) 50%,rgba(161,31,45,.37));-webkit-mask-image:linear-gradient(to bottom,#000,transparent 95%);mask-image:linear-gradient(to bottom,#000,transparent 95%)}
+.hero h1{color:#f4f6fc}.card{border-color:#353c47}
+.mt534d-home-mission{padding:17px 14px;margin-top:0;text-align:center}
+.mt534d-home-mission .mt534c-flagmark{margin:12px auto 5px}
+.mt534d-home-mission blockquote{margin:10px 0 0}
+#mt534c-sticky{top:calc(env(safe-area-inset-top) + 6px);right:10px;z-index:30;max-width:min(245px,85vw)}
+#mt534c-sticky>button{padding:6px 10px;font-size:12px;background:#1c2938f2;box-shadow:0 3px 9px #0005}
+.mt534d-clock-menu{pointer-events:auto;margin-top:5px;padding:10px;border:1px solid #586d87;border-radius:12px;background:#192431f8;box-shadow:0 5px 15px #0008;font-size:12px}
+.mt534d-clock-actions{display:flex;gap:5px;margin:8px 0}.mt534d-clock-actions button{padding:7px 10px;font-size:12px}
+.mt534d-clock-menu small{font-size:10px}
+/* Le repos automatique demeure fonctionnel, mais n'obscurcit plus les exercices. */
+.timer.large{min-height:0!important;bottom:calc(72px + env(safe-area-inset-bottom));padding:9px!important;gap:7px!important;box-shadow:0 4px 16px #0007!important;background:#222c39f5!important;flex-direction:row!important;flex-wrap:wrap!important}
+.timer.large b,.timer.large .stable-clock{font-size:26px!important;min-width:0!important;width:auto!important;line-height:1.2!important}
+.timer.large button{font-size:12px!important;padding:7px 9px!important}
+.timer.large .timer-title{font-size:12px!important}.timer.large .timer-actions{gap:4px!important}
+`;document.head.append(mt534dStyle);
+const mt534dHeaderBefore=header;header=function(){return mt534dHeaderBefore().replace('V5.3.4c TEST','V5.3.4d TEST')};
+render();
+
+
+// V5.3.4e TEST — harmonisation graphique française ; aucun changement du stockage.
+const mt534ePreviousHeader=header;
+header=function(){
+ let h=mt534ePreviousHeader();
+ return h.replace(/MON TRAINING V5\.3\.3\.10d TEST|MON TRAINING V5\.3\.4[a-z]? TEST|MON TRAINING V5\.3\.3\.8/g,'MON TRAINING V5.3.4e TEST');
+};
+const mt534eRenderBefore=render;
+render=function(){
+ mt534eRenderBefore();
+ const app=document.querySelector('#app');if(!app)return;
+ if(!openId&&view==='today'){
+  const hero=app.querySelector('.hero');
+  const mission=app.querySelector('.mt534d-home-mission');
+  if(hero&&mission){
+   // Une seule carte de bienvenue, inspirée de la maquette A.
+   const version=hero.querySelector('small')?.outerHTML||'<small>MON TRAINING V5.3.4e TEST · STOCKAGE LOCAL</small>';
+   hero.classList.add('mt534e-home-hero');
+   hero.innerHTML=`${version}<div class="mt534e-brand">MON TRAINING</div><div class="mt534e-motto">DISCIPLINE · RIGUEUR · DÉTERMINATION</div><div class="mt534e-tricolor" aria-hidden="true"><i></i><i></i><i></i></div><div class="mt534e-mission-title">MISSION DU JOUR</div>${mission.querySelector('blockquote')?.outerHTML||''}`;
+   mission.remove();
+  }
+ }
+};
+const mt534eStyle=document.createElement('style');
+mt534eStyle.textContent=`
+:root{--bg:#0d121b;--card:#1a222e;--line:#344253;--txt:#f4f7fd;--muted:#b0bdce;--accent:#4589e6;color-scheme:dark}
+html{background:#0d121b}body{background:radial-gradient(ellipse 115% 420px at 50% -150px,#1b3455 0%,#0d121b 80%) fixed;color:var(--txt)}
+main{max-width:700px;padding:14px 14px calc(105px + env(safe-area-inset-bottom))}
+h1,h2,h3,b{letter-spacing:-.015em}h1{font-size:27px}h2{color:#f3f7ff}
+.hero,.card{border:1px solid #344254;background:#1a222e;border-radius:16px;box-shadow:0 8px 23px #0002}
+.hero{background:linear-gradient(180deg,#172840,#171f2b);padding:19px 18px}
+.hero:before{background:linear-gradient(90deg,rgba(18,67,152,.55),rgba(225,232,244,.11) 50%,rgba(164,36,56,.42));mask-image:linear-gradient(to bottom,#000,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,#000,transparent 100%)}
+.hero small{font-size:10px;letter-spacing:.04em;color:#aabbd0}
+button{background:#253247;border-color:#40536c;color:#f1f6ff;transition:background .15s ease,border-color .15s ease}
+button:hover{background:#30435d}button.primary{background:#2769c5!important;border-color:#448bea!important;color:#fff!important;font-weight:750;box-shadow:0 3px 10px #0c37704d}
+button.done{background:#193e52;border-color:#4383a5;color:#d6efff}
+.days button.active{background:#2c70d0!important;color:#fff!important;border-color:#73a8f5}
+.tabs{background:#111a27f5;border-top:1px solid #33465e;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.tabs button.active,.ok,.success{color:#76aeff!important}
+.bar{background:#26364b}.bar i{background:linear-gradient(90deg,#245bb2,#63a4ff)}
+.chip{background:#23334a;color:#c1d2e8}.notice{background:#18283b;border-left-color:#4a8bdd}
+.suggestion{border-left-color:#4a8bdd}.videolink{background:#224f8a;color:#fff}
+input,select,textarea{background:#101a29;border-color:#40526a;color:#f5f8ff}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid #79afff;outline-offset:2px}
+.exercise{border-top-color:#3b4b61}.exercise>.row>b{font-size:17px}
+.setgrid{gap:8px}.setgrid label{color:#bfcee1}
+.mt534e-home-hero{text-align:center;padding:18px 15px 20px;margin-bottom:22px;min-height:225px}
+.mt534e-home-hero>small{display:block;text-align:left}
+.mt534e-brand{font-size:clamp(25px,6vw,34px);font-weight:900;letter-spacing:.08em;margin:18px 0 5px;text-shadow:0 2px 8px #0009}
+.mt534e-motto{font-size:10px;letter-spacing:.15em;color:#d7e0ed}
+.mt534e-tricolor{display:flex;overflow:hidden;width:44px;height:6px;margin:20px auto 13px;border-radius:2px}
+.mt534e-tricolor i{flex:1}.mt534e-tricolor i:nth-child(1){background:#2355a4}.mt534e-tricolor i:nth-child(2){background:#fff}.mt534e-tricolor i:nth-child(3){background:#ed4051}
+.mt534e-mission-title{font-size:12px;letter-spacing:.32em;color:#edf3fc}
+.mt534e-home-hero blockquote{font-size:15px;font-style:italic;line-height:1.5;margin:17px 0 0;padding:13px;border-radius:12px;border:1px solid #ffffff25;background:#101824b8}
+/* Chronomètre manuel : zone tactile de 44px minimum, sans masque sur le contenu. */
+#mt534c-sticky{top:calc(env(safe-area-inset-top) + 10px);right:max(12px,calc((100vw - 700px)/2 + 14px));max-width:min(270px,90vw)}
+#mt534c-sticky>button{min-height:44px;min-width:108px;padding:10px 13px;font-size:15px;font-variant-numeric:tabular-nums;background:#193657f5;border:1px solid #6899d4;box-shadow:0 5px 18px #0008}
+.mt534d-clock-menu{background:#17283dfb;border-color:#648dbd;padding:13px}
+.mt534d-clock-actions button{min-height:44px;font-size:14px;padding:10px 13px}
+.timer{background:#192d46;border-color:#4d8bd6}.timer.large{background:#192d46f5!important;border-color:#4d8bd6!important;box-shadow:0 4px 16px #0007!important}
+.timer.large b{color:#f6faff!important}
+@media(max-width:420px){.mt534e-home-hero{min-height:210px}.mt534e-brand{margin-top:14px}#mt534c-sticky{right:8px;top:calc(env(safe-area-inset-top) + 6px)}#mt534c-sticky>button{min-width:100px;padding:9px 10px;font-size:14px}}
+`;
+document.head.append(mt534eStyle);
+render();
+
+
+// V5.3.4h TEST — en-tête immersif inspiré de la maquette de référence.
+const mt534fPreviousHeader=header;
+header=function(){return mt534fPreviousHeader().replace('V5.3.4e TEST','V5.3.4h TEST')};
+const mt534fPreviousRender=render;
+render=function(){
+ mt534fPreviousRender();
+ const app=document.getElementById('app');if(!app)return;
+ if(!openId&&view==='today'){
+  const hero=app.querySelector('.mt534e-home-hero');
+  if(hero){
+   const selected=all(date).filter(s=>!data.ignoredActivities?.[date+'|'+s.id]);
+   const main=selected[0];
+   const workout=main?(main.name||'').split(/[—–-]/)[0].trim():'REPOS';
+   const detail=main?(main.name||'').split(/[—–]/).slice(1).join(' — ').trim(): 'RÉCUPÉRATION';
+   const readable=new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+   const version=hero.querySelector('small')?.outerHTML||'<small>MON TRAINING V5.3.4h TEST · STOCKAGE LOCAL</small>';
+   hero.innerHTML=`${version}<div class="mt534f-brand">MON TRAINING</div><div class="mt534f-motto">DISCIPLINE · RIGUEUR · DÉTERMINATION</div><div class="mt534f-date">▦ &nbsp;${esc(readable.charAt(0).toUpperCase()+readable.slice(1))}</div><div class="mt534e-tricolor" aria-hidden="true"><i></i><i></i><i></i></div><div class="mt534f-mission">MISSION DU JOUR</div><div class="mt534f-rule"></div><div class="mt534f-workout">${esc(workout)}</div><div class="mt534f-detail">${esc(detail||'ENTRAÎNEMENT')}</div><blockquote>« ${esc(mt534cDailyPhrase(todayISO()))} »</blockquote>`;
+   hero.classList.add('mt534f-home-hero');
+  }
+ }
+};
+const mt534fStyle=document.createElement('style');
+mt534fStyle.textContent=`
+.mt534f-home-hero{position:relative;isolation:isolate;overflow:hidden;padding:18px 20px 22px!important;border-radius:20px!important;min-height:410px!important;background:#080e18!important;border:1px solid #2a3648!important;box-shadow:0 14px 35px #0007!important;text-align:center}
+.mt534f-home-hero:before{content:'';position:absolute;z-index:-2;inset:0;background-image:linear-gradient(180deg,rgba(5,10,19,.14) 0%,rgba(5,10,19,.55) 45%,#080e18 92%),url('./hero-photo.webp');background-position:center top;background-size:cover;background-repeat:no-repeat;pointer-events:none;mask-image:none!important;-webkit-mask-image:none!important}
+.mt534f-home-hero:after{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(ellipse at center 55%,transparent 10%,rgba(3,7,14,.24) 95%);pointer-events:none}
+.mt534f-home-hero>small{display:block;text-align:left;font-size:9px;color:#b9c5d7;opacity:.8;letter-spacing:.04em}
+.mt534f-brand{font-family:Impact,'Arial Narrow',system-ui,sans-serif;font-stretch:condensed;font-size:clamp(31px,7vw,49px);font-weight:950;letter-spacing:.065em;color:#f5f7fb;text-shadow:0 3px 4px #000,0 0 15px #0009;margin:18px 0 0}
+.mt534f-motto{font-size:clamp(9px,2vw,12px);letter-spacing:.17em;color:#e3e8f0;text-shadow:0 2px 6px #000;white-space:normal}
+.mt534f-date{margin-top:24px;font-size:clamp(13px,3vw,18px);color:#e4e7eb;text-shadow:0 2px 6px #000}
+.mt534f-home-hero .mt534e-tricolor{width:76px;height:9px;margin:20px auto 13px;box-shadow:0 2px 6px #0009}
+.mt534f-mission{letter-spacing:.34em;font-size:clamp(12px,2.5vw,17px);color:#f4f5fa;text-shadow:0 2px 6px #000}
+.mt534f-rule{width:160px;height:1px;background:linear-gradient(90deg,transparent,#9ca8b7,transparent);margin:9px auto 5px}
+.mt534f-workout{font-family:Impact,'Arial Narrow',system-ui,sans-serif;font-weight:950;font-size:clamp(45px,11vw,77px);line-height:1.13;letter-spacing:.035em;color:#f7f8fb;text-shadow:0 4px 2px #000,0 0 20px #000b;text-transform:uppercase;overflow-wrap:anywhere}
+.mt534f-detail{font-size:clamp(12px,3vw,18px);letter-spacing:.16em;text-transform:uppercase;font-weight:750;color:#f0f3f7;text-shadow:0 2px 6px #000;margin:4px 0 18px}
+.mt534f-home-hero blockquote{font-size:clamp(14px,3vw,18px);font-style:italic;line-height:1.45;padding:14px 11px!important;margin:0!important;border-radius:12px!important;border:1px solid #ffffff21!important;background:#0b121dcc!important;color:#f1f2f6;text-shadow:0 1px 2px #000}
+@media(max-width:420px){.mt534f-home-hero{padding:13px 12px 16px!important;min-height:385px!important}.mt534f-brand{margin-top:17px}.mt534f-date{margin-top:22px}.mt534f-detail{letter-spacing:.09em}}
+`;
+document.head.append(mt534fStyle);
+render();
+
+const mt534gStyle=document.createElement("style");mt534gStyle.textContent="\n/* V5.3.4g: photographic military artwork and more visible French colors */\n.mt534f-home-hero:before{background-image:linear-gradient(180deg,rgba(3,8,18,.08) 0%,rgba(3,8,18,.25) 65%,rgba(3,8,18,.60) 100%),url('./hero-photo.webp')!important;background-size:cover!important;background-position:center center!important}\n.mt534f-home-hero:after{background:radial-gradient(ellipse at 50% 52%,rgba(2,8,17,.26),transparent 75%)!important}\n.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,rgba(4,10,22,.13),rgba(4,10,22,.22)),url('./banner-photo.webp')!important;background-position:center!important;background-size:cover!important;border-color:#31537b!important}\n.mt534f-home-hero .mt534e-tricolor{box-shadow:0 0 0 1px #ffffff28,0 3px 8px #0009}\n@media(max-width:420px){.mt534f-home-hero:before{background-position:58% center!important}}\n";document.head.append(mt534gStyle);
+
+/* V5.3.4h: photographic artwork without embedded UI text; version only in Données */
+const mt534hRender=render;
+render=function(){
+ mt534hRender();
+ const app=document.getElementById('app');if(!app)return;
+ app.querySelectorAll('.hero > small').forEach(el=>el.remove());
+ if(view==='settings'&&!openId){
+   const v=document.createElement('p');v.className='mt534h-version';
+   v.textContent='Mon Training V5.3.4h TEST · Stockage local';
+   app.appendChild(v);
+ }
+};
+const mt534hStyle=document.createElement('style');
+mt534hStyle.textContent=`.mt534h-version{margin:20px 0 8px;text-align:center;color:#9aabc3;font-size:12px;letter-spacing:.04em}.mt534f-home-hero:before{background-position:center center!important}.hero:not(.mt534f-home-hero){background-position:center center!important}`;
+document.head.appendChild(mt534hStyle);
+render();
 </script><script>if('serviceWorker' in navigator && location.protocol==='https:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script></body></html>
