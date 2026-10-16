@@ -1227,7 +1227,7 @@ render=function(){
  app.querySelectorAll('.hero > small').forEach(el=>el.remove());
  if(view==='settings'&&!openId){
    const v=document.createElement('p');v.className='mt534h-version';
-   v.textContent='Mon Training V5.3.4j TEST · Stockage local';
+   v.textContent='Mon Training V5.3.4k TEST · Stockage local';
    app.appendChild(v);
  }
 };
@@ -1285,4 +1285,34 @@ mt534jStyle.textContent=`
 }
 `;
 document.head.appendChild(mt534jStyle);
+
+/* V5.3.4k — iOS installed PWA: respect status-bar safe area and compact secondary headers. */
+const mt534kStyle=document.createElement('style');
+mt534kStyle.textContent=`
+html{background:#0b1422}
+/* In standalone mode the black-translucent status bar overlays the webview. */
+@media (display-mode: standalone){
+  main#app{padding-top:calc(16px + env(safe-area-inset-top, 0px))!important}
+}
+html.mt534k-standalone main#app{padding-top:calc(16px + env(safe-area-inset-top, 0px))!important}
+/* Compact secondary tabs, with title/description as real HTML text. */
+@media(max-width:600px){
+  main#app > .hero:not(.mt534f-home-hero){
+    height:auto!important;min-height:0!important;max-height:none!important;
+    padding:13px 15px!important;margin-top:0!important;margin-bottom:14px!important;
+    background-position:66% 42%!important;
+  }
+  main#app > .hero:not(.mt534f-home-hero) h1{
+    font-size:21px!important;line-height:1.25!important;
+    margin:0 0 5px!important;filter:none!important;backdrop-filter:none!important;
+  }
+  main#app > .hero:not(.mt534f-home-hero) .mini{
+    font-size:12px!important;line-height:1.35!important;filter:none!important;
+  }
+}
+`;
+document.head.appendChild(mt534kStyle);
+if(window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches){
+ document.documentElement.classList.add('mt534k-standalone');
+}
 </script><script>if('serviceWorker' in navigator && location.protocol==='https:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script></body></html>
