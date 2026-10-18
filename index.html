@@ -1,10 +1,26 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101114"><title>Mon Training</title><style>
 :root{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color-scheme:dark;--bg:#101114;--card:#1d2025;--line:#383b41;--txt:#f2f6fc;--muted:#aeb0b6;--accent:#e8a061}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt)}main{max-width:650px;margin:auto;padding:16px 14px 105px}h1{font-size:27px;margin:6px 0}h2{font-size:21px;margin:20px 0 10px}h3{margin:6px 0 10px}p{line-height:1.5}small,.muted{color:var(--muted)}.hero{padding:18px;background:linear-gradient(125deg,#34261e,#171b23);border-radius:18px;margin-bottom:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:14px;margin:10px 0}.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.stack{display:grid;gap:8px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.mini{font-size:13px;color:var(--muted)}button{font:inherit;border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:#303239;color:var(--txt);cursor:pointer}button.primary{background:var(--accent);border-color:var(--accent);color:#211408;font-weight:750}button:disabled{opacity:.5}button.done{background:#704a2f;border-color:var(--accent)}input,textarea,select{font:inherit;width:100%;border:1px solid var(--line);border-radius:9px;padding:10px;background:#14161a;color:var(--txt);margin-top:4px;min-height:42px}textarea{min-height:65px}label{display:block;font-size:13px;color:var(--muted)}.setgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:9px 0}.setgrid label{font-size:12px}.exercise{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.tabs{position:fixed;bottom:0;left:0;right:0;background:#181a1f;border-top:1px solid var(--line);display:flex;justify-content:center;padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:5}.tabs button{flex:1;max-width:160px;border:0;background:none;font-size:12px;padding:7px 2px}.tabs button.active{color:var(--accent);font-weight:750}.chip{display:inline-block;padding:5px 9px;border-radius:20px;background:#34363c;color:var(--muted);font-size:12px}.ok{color:var(--accent)}.danger{color:#ffb0a6}.timer{position:fixed;bottom:78px;left:12px;right:12px;max-width:620px;margin:auto;background:#44301f;border:1px solid var(--accent);border-radius:14px;padding:12px;z-index:4;display:none}.timer.show{display:flex;align-items:center;justify-content:space-between}.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.days button{padding:9px 0;font-size:12px}.days button.active{background:var(--accent);color:#211408}svg{max-width:100%}.bar{height:8px;background:#34363c;border-radius:8px;overflow:hidden}.bar i{display:block;background:var(--accent);height:100%}.notice{font-size:13px;border-left:3px solid #e8b66a;padding:9px;background:#292d35}.hide{display:none!important}summary{cursor:pointer;padding:4px 0}details p{font-size:14px}.videolink{display:inline-block;background:#704a2f;color:#f2f6fc;text-decoration:none;padding:11px;border-radius:10px;margin-top:4px}.tabs button{font-size:11px}.hero{box-shadow:0 14px 35px #0003}.card{box-shadow:0 5px 18px #0002}button.primary{color:#201208}.videolink{background:#573c2c}.notice{border-left-color:var(--accent)}.badge{border:1px solid var(--line);border-radius:20px;padding:4px 9px;font-size:12px;color:var(--muted)}.suggestion{border-left:3px solid var(--accent)}.actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{flex:1}.date-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:end}.date-row button{white-space:nowrap}.two-dates{display:grid;grid-template-columns:1fr 1fr;gap:10px}.success{color:#e8a061}@media(max-width:360px){.date-row{grid-template-columns:1fr}.tabs button{font-size:10px}} </style><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Mon Training"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"><style>
 /* V5.3.4n — clean image references, 4 assets only; installed iOS PWA. */
-.mt534f-home-hero:before{background-image:linear-gradient(180deg,rgba(3,9,21,.32),rgba(3,9,21,.53) 53%,rgba(3,9,21,.93)),url('./hero-v534n.webp')!important;background-size:cover!important;background-position:65% center!important}
-main#app.mt534l-progress>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./progress-v534n.webp')!important}
-main#app.mt534l-lexicon>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./lexicon-v534n.webp')!important}
-main#app.mt534l-settings>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./settings-v534n.webp')!important}
+.mt534f-home-hero:before{background-image:linear-gradient(180deg,rgba(3,9,21,.32),rgba(3,9,21,.53) 53%,rgba(3,9,21,.93)),url('./hero-v534o.webp')!important;background-size:cover!important;background-position:65% center!important}
+main#app.mt534l-progress>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./progress-v534o.webp')!important}
+main#app.mt534l-lexicon>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./lexicon-v534o.webp')!important}
+main#app.mt534l-settings>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./settings-v534o.webp')!important}
+</style><style id="mt534o-banner-fix">
+/* V5.3.4o: artwork without embedded words, gentle gradient and mobile layout. */
+.mt534f-home-hero{min-height:350px!important;padding:16px 14px 18px!important}
+.mt534f-home-hero:before{background-image:linear-gradient(180deg,rgba(3,9,21,.35),rgba(3,9,21,.48) 52%,rgba(3,9,21,.86)),url('./hero-v534o.webp')!important;background-position:center center!important;background-size:cover!important}
+.mt534f-home-hero:after{background:linear-gradient(90deg,rgba(2,9,22,.20),transparent 85%)!important}
+.mt534f-home-hero .mt534f-brand{margin-top:10px!important}
+.mt534f-home-hero .mt534f-date{margin-top:14px!important}
+.mt534f-home-hero .mt534e-tricolor{margin-top:14px!important;margin-bottom:12px!important}
+.mt534f-home-hero .mt534f-workout{font-size:clamp(36px,12vw,66px)!important;line-height:1.04!important}
+.mt534f-home-hero blockquote{margin-top:12px!important;padding:10px!important}
+main#app.mt534l-progress>.hero:not(.mt534f-home-hero){background-image:url('./progress-v534o.webp')!important;background-position:center!important;background-size:cover!important}
+main#app.mt534l-lexicon>.hero:not(.mt534f-home-hero){background-image:url('./lexicon-v534o.webp')!important;background-position:center!important;background-size:cover!important}
+main#app.mt534l-settings>.hero:not(.mt534f-home-hero){background-image:url('./settings-v534o.webp')!important;background-position:center!important;background-size:cover!important}
+main#app>.hero:not(.mt534f-home-hero){min-height:112px!important}
+main#app>.hero:not(.mt534f-home-hero) h1{font-size:clamp(19px,4.8vw,26px)!important}
+main#app>.hero:not(.mt534f-home-hero) .mini{font-size:clamp(9px,2.5vw,12px)!important}
 </style></head><body><main id="app"></main><div id="timer" class="timer"></div><nav class="tabs" id="tabs"><button data-tab="today">🏠<br>Aujourd'hui</button><button data-tab="week">📅<br>Semaine</button><button data-tab="progress">📈<br>Progrès</button><button data-tab="lexicon">📚<br>Lexique</button><button data-tab="settings">⚙️<br>Données</button></nav><script>
 'use strict';
 const KEY='mon-training-v2-local';const todayISO=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
@@ -1206,7 +1222,7 @@ render=function(){
 const mt534fStyle=document.createElement('style');
 mt534fStyle.textContent=`
 .mt534f-home-hero{position:relative;isolation:isolate;overflow:hidden;padding:18px 20px 22px!important;border-radius:20px!important;min-height:410px!important;background:#080e18!important;border:1px solid #2a3648!important;box-shadow:0 14px 35px #0007!important;text-align:center}
-.mt534f-home-hero:before{content:'';position:absolute;z-index:-2;inset:0;background-image:linear-gradient(180deg,rgba(5,10,19,.14) 0%,rgba(5,10,19,.55) 45%,#080e18 92%),url('./hero-v534n.webp');background-position:center top;background-size:cover;background-repeat:no-repeat;pointer-events:none;mask-image:none!important;-webkit-mask-image:none!important}
+.mt534f-home-hero:before{content:'';position:absolute;z-index:-2;inset:0;background-image:linear-gradient(180deg,rgba(5,10,19,.14) 0%,rgba(5,10,19,.55) 45%,#080e18 92%),url('./hero-v534o.webp');background-position:center top;background-size:cover;background-repeat:no-repeat;pointer-events:none;mask-image:none!important;-webkit-mask-image:none!important}
 .mt534f-home-hero:after{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(ellipse at center 55%,transparent 10%,rgba(3,7,14,.24) 95%);pointer-events:none}
 .mt534f-home-hero>small{display:block;text-align:left;font-size:9px;color:#b9c5d7;opacity:.8;letter-spacing:.04em}
 .mt534f-brand{font-family:Impact,'Arial Narrow',system-ui,sans-serif;font-stretch:condensed;font-size:clamp(31px,7vw,49px);font-weight:950;letter-spacing:.065em;color:#f5f7fb;text-shadow:0 3px 4px #000,0 0 15px #0009;margin:18px 0 0}
@@ -1223,7 +1239,7 @@ mt534fStyle.textContent=`
 document.head.append(mt534fStyle);
 render();
 
-const mt534gStyle=document.createElement("style");mt534gStyle.textContent="\n/* V5.3.4g: photographic military artwork and more visible French colors */\n.mt534f-home-hero:before{background-image:linear-gradient(180deg,rgba(3,8,18,.08) 0%,rgba(3,8,18,.25) 65%,rgba(3,8,18,.60) 100%),url('./hero-v534n.webp')!important;background-size:cover!important;background-position:center center!important}\n.mt534f-home-hero:after{background:radial-gradient(ellipse at 50% 52%,rgba(2,8,17,.26),transparent 75%)!important}\n.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,rgba(4,10,22,.13),rgba(4,10,22,.22)),url('./hero-v534n.webp')!important;background-position:center!important;background-size:cover!important;border-color:#31537b!important}\n.mt534f-home-hero .mt534e-tricolor{box-shadow:0 0 0 1px #ffffff28,0 3px 8px #0009}\n@media(max-width:420px){.mt534f-home-hero:before{background-position:58% center!important}}\n";document.head.append(mt534gStyle);
+const mt534gStyle=document.createElement("style");mt534gStyle.textContent="\n/* V5.3.4g: photographic military artwork and more visible French colors */\n.mt534f-home-hero:before{background-image:linear-gradient(180deg,rgba(3,8,18,.08) 0%,rgba(3,8,18,.25) 65%,rgba(3,8,18,.60) 100%),url('./hero-v534o.webp')!important;background-size:cover!important;background-position:center center!important}\n.mt534f-home-hero:after{background:radial-gradient(ellipse at 50% 52%,rgba(2,8,17,.26),transparent 75%)!important}\n.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,rgba(4,10,22,.13),rgba(4,10,22,.22)),url('./hero-v534o.webp')!important;background-position:center!important;background-size:cover!important;border-color:#31537b!important}\n.mt534f-home-hero .mt534e-tricolor{box-shadow:0 0 0 1px #ffffff28,0 3px 8px #0009}\n@media(max-width:420px){.mt534f-home-hero:before{background-position:58% center!important}}\n";document.head.append(mt534gStyle);
 
 /* V5.3.4h: photographic artwork without embedded UI text; version only in Données */
 const mt534hRender=render;
@@ -1233,7 +1249,7 @@ render=function(){
  app.querySelectorAll('.hero > small').forEach(el=>el.remove());
  if(view==='settings'&&!openId){
    const v=document.createElement('p');v.className='mt534h-version';
-   v.textContent='Mon Training V5.3.4n TEST · Stockage local';
+   v.textContent='Mon Training V5.3.4o TEST · Stockage local';
    app.appendChild(v);
  }
 };
@@ -1241,7 +1257,7 @@ const mt534hStyle=document.createElement('style');
 mt534hStyle.textContent=`.mt534h-version{margin:20px 0 8px;text-align:center;color:#9aabc3;font-size:12px;letter-spacing:.04em}.mt534f-home-hero:before{background-position:center center!important}.hero:not(.mt534f-home-hero){background-position:center center!important}`;
 document.head.appendChild(mt534hStyle);
 render();
-const mt534iStyle=document.createElement('style');mt534iStyle.textContent="\n/* V5.3.4i — portrait personnel, lisibilité mobile et harmonisation bleue */\n.mt534f-home-hero:before{\n background-image:linear-gradient(180deg,rgba(4,10,24,.24) 0%,rgba(4,10,24,.30) 54%,rgba(3,9,20,.80) 100%),url('./hero-v534n.webp')!important;\n background-size:cover!important;background-position:73% center!important;\n}\n.mt534f-home-hero:after{background:radial-gradient(ellipse at 52% 58%,rgba(2,7,17,.24),transparent 80%)!important}\n.mt534f-brand{margin-top:29px!important;position:relative;z-index:1}\n.mt534f-motto,.mt534f-date,.mt534f-mission,.mt534f-workout,.mt534f-detail{position:relative;z-index:1;text-shadow:0 2px 8px #000,0 0 15px #000a}\n.today-progress span,.bar i{background:#277bf0!important}\n.today-task-action{color:#66a9ff!important}\nbutton.primary{background:#266ac4!important;border-color:#458de9!important;color:#fff!important}\nbutton.done,.days button.active{background:#234e89!important;color:#fff!important}\n.tabs button.active,.today-overview-head small{color:#6daaff!important}\n.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,rgba(3,10,22,.18),rgba(3,10,22,.40)),url('./hero-v534n.webp')!important;background-position:68% center!important;background-size:cover!important}\n@media(max-width:600px){\n .mt534f-home-hero:before{background-position:71% center!important}\n .mt534f-home-hero{min-height:420px!important}\n .mt534f-brand{margin-top:27px!important}\n .mt534f-workout{font-size:clamp(46px,14vw,78px)}\n}\n";document.head.appendChild(mt534iStyle);
+const mt534iStyle=document.createElement('style');mt534iStyle.textContent="\n/* V5.3.4i — portrait personnel, lisibilité mobile et harmonisation bleue */\n.mt534f-home-hero:before{\n background-image:linear-gradient(180deg,rgba(4,10,24,.24) 0%,rgba(4,10,24,.30) 54%,rgba(3,9,20,.80) 100%),url('./hero-v534o.webp')!important;\n background-size:cover!important;background-position:73% center!important;\n}\n.mt534f-home-hero:after{background:radial-gradient(ellipse at 52% 58%,rgba(2,7,17,.24),transparent 80%)!important}\n.mt534f-brand{margin-top:29px!important;position:relative;z-index:1}\n.mt534f-motto,.mt534f-date,.mt534f-mission,.mt534f-workout,.mt534f-detail{position:relative;z-index:1;text-shadow:0 2px 8px #000,0 0 15px #000a}\n.today-progress span,.bar i{background:#277bf0!important}\n.today-task-action{color:#66a9ff!important}\nbutton.primary{background:#266ac4!important;border-color:#458de9!important;color:#fff!important}\nbutton.done,.days button.active{background:#234e89!important;color:#fff!important}\n.tabs button.active,.today-overview-head small{color:#6daaff!important}\n.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,rgba(3,10,22,.18),rgba(3,10,22,.40)),url('./hero-v534o.webp')!important;background-position:68% center!important;background-size:cover!important}\n@media(max-width:600px){\n .mt534f-home-hero:before{background-position:71% center!important}\n .mt534f-home-hero{min-height:420px!important}\n .mt534f-brand{margin-top:27px!important}\n .mt534f-workout{font-size:clamp(46px,14vw,78px)}\n}\n";document.head.appendChild(mt534iStyle);
 
 /* V5.3.4j — bandeaux secondaires compacts et nets sur iPhone */
 const mt534jStyle=document.createElement('style');
@@ -1253,7 +1269,7 @@ mt534jStyle.textContent=`
  padding:15px 17px!important;
  margin-bottom:16px!important;
  overflow:hidden!important;
- background-image:linear-gradient(90deg,rgba(5,14,31,.80) 0%,rgba(5,14,31,.62) 56%,rgba(5,14,31,.18) 100%),url('./hero-v534n.webp')!important;
+ background-image:linear-gradient(90deg,rgba(5,14,31,.80) 0%,rgba(5,14,31,.62) 56%,rgba(5,14,31,.18) 100%),url('./hero-v534o.webp')!important;
  background-position:68% 42%!important;
  background-size:cover!important;
  background-repeat:no-repeat!important;
@@ -1326,15 +1342,15 @@ if(window.navigator.standalone === true || window.matchMedia('(display-mode: sta
 const mt534lStyle=document.createElement('style');
 mt534lStyle.textContent=`
 .mt534f-home-hero:before{
- background-image:linear-gradient(180deg,rgba(4,10,24,.33) 0%,rgba(4,10,24,.38) 45%,rgba(3,9,20,.88) 100%),url('./hero-v534n.webp')!important;
+ background-image:linear-gradient(180deg,rgba(4,10,24,.33) 0%,rgba(4,10,24,.38) 45%,rgba(3,9,20,.88) 100%),url('./hero-v534o.webp')!important;
  background-position:56% center!important;background-size:cover!important;
 }
 .mt534f-home-hero:after{background:radial-gradient(ellipse at center,rgba(4,10,22,.17),rgba(4,10,22,.45))!important}
 .mt534f-brand{color:#f8fafc!important;text-shadow:0 2px 9px #020712,0 0 22px #020712!important}
 .mt534f-home-hero .mt534e-tricolor{width:114px!important;height:7px!important}
-main#app.mt534l-progress>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.86) 44%,rgba(7,19,36,.16) 100%),url('./progress-v534n.webp')!important;background-position:center,right center!important}
-main#app.mt534l-lexicon>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.86) 44%,rgba(7,19,36,.16) 100%),url('./lexicon-v534n.webp')!important;background-position:center,right center!important}
-main#app.mt534l-settings>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.86) 44%,rgba(7,19,36,.16) 100%),url('./settings-v534n.webp')!important;background-position:center,right center!important}
+main#app.mt534l-progress>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.86) 44%,rgba(7,19,36,.16) 100%),url('./progress-v534o.webp')!important;background-position:center,right center!important}
+main#app.mt534l-lexicon>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.86) 44%,rgba(7,19,36,.16) 100%),url('./lexicon-v534o.webp')!important;background-position:center,right center!important}
+main#app.mt534l-settings>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.86) 44%,rgba(7,19,36,.16) 100%),url('./settings-v534o.webp')!important;background-position:center,right center!important}
 @media(max-width:600px){.mt534f-home-hero:before{background-position:60% center!important}}
 `;
 document.head.appendChild(mt534lStyle);
@@ -1346,12 +1362,12 @@ render();
 const mt534mStyle=document.createElement('style');
 mt534mStyle.textContent=`
 .mt534f-home-hero:before{
- background-image:linear-gradient(180deg,rgba(3,9,21,.32),rgba(3,9,21,.53) 53%,rgba(3,9,21,.93)),url('./hero-v534n.webp')!important;
+ background-image:linear-gradient(180deg,rgba(3,9,21,.32),rgba(3,9,21,.53) 53%,rgba(3,9,21,.93)),url('./hero-v534o.webp')!important;
  background-size:cover!important;background-position:65% center!important;
 }
-main#app.mt534l-progress>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./progress-v534n.webp')!important;background-position:center center!important;background-size:cover!important}
-main#app.mt534l-lexicon>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./lexicon-v534n.webp')!important;background-position:center center!important;background-size:cover!important}
-main#app.mt534l-settings>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./settings-v534n.webp')!important;background-position:center center!important;background-size:cover!important}
+main#app.mt534l-progress>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./progress-v534o.webp')!important;background-position:center center!important;background-size:cover!important}
+main#app.mt534l-lexicon>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./lexicon-v534o.webp')!important;background-position:center center!important;background-size:cover!important}
+main#app.mt534l-settings>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,#071324 0%,rgba(7,19,36,.88) 45%,rgba(7,19,36,.08) 100%),url('./settings-v534o.webp')!important;background-position:center center!important;background-size:cover!important}
 main#app>.hero:not(.mt534f-home-hero){min-height:122px!important;display:flex;flex-direction:column;justify-content:center}
 main#app>.hero:not(.mt534f-home-hero) h1{font-size:clamp(20px,5vw,27px)!important;line-height:1.2!important;margin:0 0 8px!important}
 main#app>.hero:not(.mt534f-home-hero) .mini{font-size:11px!important;letter-spacing:.07em!important;color:#d7e5f6!important;line-height:1.4!important}
