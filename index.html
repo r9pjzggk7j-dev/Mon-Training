@@ -21,6 +21,18 @@ main#app.mt534l-settings>.hero:not(.mt534f-home-hero){background-image:url('./se
 main#app>.hero:not(.mt534f-home-hero){min-height:112px!important}
 main#app>.hero:not(.mt534f-home-hero) h1{font-size:clamp(19px,4.8vw,26px)!important}
 main#app>.hero:not(.mt534f-home-hero) .mini{font-size:clamp(9px,2.5vw,12px)!important}
+</style><style id="mt534p-mobile-banner-framing">
+/* V5.3.4p: mobile-first, full secondary artwork, with no cover crop. */
+main#app.mt534l-progress>.hero:not(.mt534f-home-hero),
+main#app.mt534l-lexicon>.hero:not(.mt534f-home-hero),
+main#app.mt534l-settings>.hero:not(.mt534f-home-hero){
+ background-size:100% 100%!important;
+ background-position:center center!important;
+ background-repeat:no-repeat!important;
+}
+main#app.mt534l-progress>.hero:not(.mt534f-home-hero){background-image:url('./progress-v534p.webp')!important}
+main#app.mt534l-lexicon>.hero:not(.mt534f-home-hero){background-image:url('./lexicon-v534p.webp')!important}
+main#app.mt534l-settings>.hero:not(.mt534f-home-hero){background-image:url('./settings-v534p.webp')!important}
 </style></head><body><main id="app"></main><div id="timer" class="timer"></div><nav class="tabs" id="tabs"><button data-tab="today">🏠<br>Aujourd'hui</button><button data-tab="week">📅<br>Semaine</button><button data-tab="progress">📈<br>Progrès</button><button data-tab="lexicon">📚<br>Lexique</button><button data-tab="settings">⚙️<br>Données</button></nav><script>
 'use strict';
 const KEY='mon-training-v2-local';const todayISO=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
@@ -1249,7 +1261,7 @@ render=function(){
  app.querySelectorAll('.hero > small').forEach(el=>el.remove());
  if(view==='settings'&&!openId){
    const v=document.createElement('p');v.className='mt534h-version';
-   v.textContent='Mon Training V5.3.4o TEST · Stockage local';
+   v.textContent='Mon Training V5.3.4p TEST · Stockage local';
    app.appendChild(v);
  }
 };
