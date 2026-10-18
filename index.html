@@ -1261,7 +1261,7 @@ render=function(){
  app.querySelectorAll('.hero > small').forEach(el=>el.remove());
  if(view==='settings'&&!openId){
    const v=document.createElement('p');v.className='mt534h-version';
-   v.textContent='Mon Training V5.3.4p TEST · Stockage local';
+   v.textContent='Mon Training V5.3.4q TEST · Stockage local';
    app.appendChild(v);
  }
 };
@@ -1396,4 +1396,30 @@ render=function(){
  }
 };
 render();
-</script><script>if('serviceWorker' in navigator && location.protocol==='https:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script></body></html>
+</script><script>if('serviceWorker' in navigator && location.protocol==='https:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script><script id="mt534q-fixes">
+/* V5.3.4q: iPhone layout fixes, appended after legacy styles to ensure precedence. */
+(function(){
+const css=`
+/* Let the hero end immediately below the quotation, rather than reserving dead space. */
+main#app .mt534f-home-hero{min-height:0!important;height:auto!important;padding-bottom:14px!important}
+main#app .mt534f-home-hero blockquote{margin-bottom:0!important}
+/* On compact banners, show the ENTIRE image rather than the enlarged cropped image. */
+main#app.mt534l-progress>.hero:not(.mt534f-home-hero){background-image:linear-gradient(90deg,rgba(4,14,30,.28),rgba(4,14,30,.03)),url('./progress-v534q.webp')!important}
+main#app.mt534l-lexicon>.hero:not(.mt534f-home-hero){background-image:url('./lexicon-v534p.webp')!important}
+main#app.mt534l-settings>.hero:not(.mt534f-home-hero){background-image:url('./settings-v534p.webp')!important}
+main#app.mt534l-progress>.hero:not(.mt534f-home-hero),
+main#app.mt534l-lexicon>.hero:not(.mt534f-home-hero),
+main#app.mt534l-settings>.hero:not(.mt534f-home-hero){background-size:100% 100%!important;background-position:center center!important;background-repeat:no-repeat!important}
+/* Prevent native iOS date widgets from exceeding their grid columns. */
+#v10-start,#v10-end,#v10-mode{display:block;width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+#v10-start,#v10-end{font-size:14px!important;padding:10px 5px!important;text-align:center!important}
+#v10-start::-webkit-date-and-time-value,#v10-end::-webkit-date-and-time-value{text-align:center!important;min-width:0!important}
+#v10-start::-webkit-datetime-edit,#v10-end::-webkit-datetime-edit{padding:0!important;min-width:0!important}
+#v10-mode{margin-bottom:10px!important}
+main#app .card:has(#v10-start) .grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:8px!important;min-width:0!important}
+main#app .card:has(#v10-start) .grid label{min-width:0!important;max-width:100%!important;overflow:hidden!important}
+@media(max-width:380px){#v10-start,#v10-end{font-size:12px!important;padding:9px 2px!important}}
+`;
+const style=document.createElement('style');style.id='mt534q-final-style';style.textContent=css;document.head.appendChild(style);
+})();
+</script></body></html>
