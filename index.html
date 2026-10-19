@@ -61,7 +61,7 @@ main#app .card:has(#v10-start) label{min-width:0!important}
 #v10-start,#v10-end,#v10-mode{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
 #v10-start,#v10-end{font-size:13px!important;padding:9px 2px!important}
 @media(max-width:380px){#v10-start,#v10-end{font-size:11px!important}}
-</style></head><body><main id="app"></main><div id="timer" class="timer"></div><nav class="tabs" id="tabs"><button data-tab="today">🏠<br>Aujourd'hui</button><button data-tab="week">📅<br>Semaine</button><button data-tab="progress">📈<br>Progrès</button><button data-tab="lexicon">📚<br>Lexique</button><button data-tab="settings">⚙️<br>Données</button></nav><script>
+</style></head><body><main id="app"></main><div id="timer" class="timer"></div><nav class="tabs" id="tabs"><button data-tab="today"><span class="mt-nav-icon" aria-hidden="true">🏠</span><span class="mt-nav-label">Aujourd'hui</span></button><button data-tab="week"><span class="mt-nav-icon" aria-hidden="true">📅</span><span class="mt-nav-label">Semaine</span></button><button data-tab="progress"><span class="mt-nav-icon" aria-hidden="true">📈</span><span class="mt-nav-label">Progrès</span></button><button data-tab="lexicon"><span class="mt-nav-icon" aria-hidden="true">📚</span><span class="mt-nav-label">Lexique</span></button><button data-tab="settings"><span class="mt-nav-icon" aria-hidden="true">⚙️</span><span class="mt-nav-label">Données</span></button></nav><script>
 'use strict';
 const KEY='mon-training-v2-local';const todayISO=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
 const DAYS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];const short=['L','M','M','J','V','S','D'];const isoOf=(d)=>{const z=new Date(d);return [z.getFullYear(),String(z.getMonth()+1).padStart(2,'0'),String(z.getDate()).padStart(2,'0')].join('-')};const monday=(d)=>{let x=new Date(d+'T12:00:00');x.setDate(x.getDate()-(x.getDay()+6)%7);return x};const plus=(d,n)=>{let x=new Date(d+'T12:00:00');x.setDate(x.getDate()+n);return isoOf(x)};const idx=d=>(new Date(d+'T12:00:00').getDay()+6)%7;const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -154,7 +154,7 @@ if(b.dataset.acceptProgress){const key=b.dataset.acceptProgress, proposal=progre
 if(b.dataset.rejectProgress){data.progressDecisions[b.dataset.rejectProgress]={date:todayISO(),status:'rejected'};persist();render();return}
 if(b.id==='importCoach'){const input=document.querySelector('#coachFile');if(input)input.click();return}
 if(b.id==='undoCoach'){const last=data.programHistory.pop();if(!last){alert('Aucune modification à annuler.');return}if(last.type==='coach-batch'){data.programOverrides=last.previous;data.cycleStart=last.previousCycleStart||data.cycleStart}else if(last.key){if(last.previous)data.programOverrides[last.key]=last.previous;else delete data.programOverrides[last.key]}persist();render();return}
-if(b.dataset.videoSave){const name=b.dataset.videoSave;const input=[...document.querySelectorAll('[data-video-input]')].find(x=>x.dataset.videoInput===name);const url=(input?.value||'').trim();if(url && !/^https:\/\/(www\.)?(youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}|youtu\.be\/[a-zA-Z0-9_-]{11})(?:[&#?].*)?$/.test(url)){alert('Colle un lien direct vers une vidéo YouTube.');return}data.videoPrefs ||= {};data.videoPrefs[name]=url;persist();render();return}if(b.id==='clear'&&confirm('Effacer définitivement toutes les séances enregistrées sur cet appareil ?')){data.entries={};persist();render()}});document.addEventListener('input',e=>{if(e.target.id==='lexSearch')document.querySelector('#lexItems').innerHTML=lexItems(e.target.value)});document.addEventListener('change',async e=>{if(e.target.dataset.restpref){const val=Number(e.target.value);if(!Number.isFinite(val)||val<0||val>1200){alert('Choisis une durée entre 0 et 1200 secondes.');return}data.restPrefs[e.target.dataset.restpref]=val;persist();const btn=e.target.closest('.exercise')?.querySelector('[data-timer]');if(btn)btn.dataset.timer=val;return}if(e.target.id==='coachFile'){try{const file=e.target.files?.[0];if(!file)return;const r=JSON.parse(await file.text());if(r.format!=='mon-training-coach-v5'||!Array.isArray(r.changes))throw Error('Format attendu : mon-training-coach-v5 et changes[]');if(!r.changes.length||r.changes.length>40)throw Error('Nombre de modifications invalide');const proposed={...data.programOverrides};const preview=[];for(const c of r.changes){if(!['push','pull','legs'].includes(c.session)||!Number.isInteger(c.index)||c.index<0||c.index>=EX[c.session].length)throw Error('Exercice inconnu : '+JSON.stringify(c));const key=c.session+'|'+c.index,base=currentEx(c.session,c.index);const vals={name:String(c.name||base[0]).slice(0,100),description:String(c.description||base[1]).slice(0,180),sets:Number(c.sets??base[2]),kg:Number(c.kg??base[3]),reps:Number(c.reps??base[4]),rest:Number(c.rest??base[5])};if(![vals.sets,vals.kg,vals.reps,vals.rest].every(Number.isFinite)||vals.sets<1||vals.sets>10||vals.kg<0||vals.kg>400||vals.reps<1||vals.reps>100||vals.rest<0||vals.rest>1200)throw Error('Valeur hors limite : '+key);proposed[key]=vals;preview.push(`${base[0]} → ${vals.name} : ${vals.sets}×${vals.reps} à ${vals.kg} kg, repos ${vals.rest} s`)}if(confirm('Appliquer ces modifications ?\n\n'+preview.join('\n')+'\n\nL’ancien programme reste récupérable.')){data.programHistory.push({at:new Date().toISOString(),type:'coach-batch',previous:{...data.programOverrides},previousCycleStart:data.cycleStart});data.programOverrides=proposed;if(r.newCycle===true)data.cycleStart=todayISO();persist();render()}}catch(err){alert('Import impossible : '+err.message)}return}if(e.target.id!=='import')return;try{const r=JSON.parse(await e.target.files[0].text());if(!r.entries||typeof r.entries!=='object')throw Error('Format non reconnu');if(confirm('Remplacer les résultats actuels par cette sauvegarde ?')){data={entries:r.entries,restPrefs:r.restPrefs||{},baseline:r.baseline||data.baseline,programOverrides:r.programOverrides||{},programHistory:r.programHistory||[],progressDecisions:r.progressDecisions||{},likes:r.likes||{},videoPrefs:r.videoPrefs||{},cycleStart:r.cycleStart||'2026-10-12',schedule:r.schedule||{},locationPrefs:r.locationPrefs||{},soundEnabled:r.soundEnabled??true,bandColors:r.bandColors||{},pushupLevels:r.pushupLevels||{},backupReminder:r.backupReminder||{lastAcknowledged:null},ignoredActivities:r.ignoredActivities||{},vacationPeriods:r.vacationPeriods||[],challengesV6:r.challengesV6||{},healthV6:r.healthV6||{},instructionV6:r.instructionV6||[],v10Graph:r.v10Graph||'strength'};persist();render()}}catch(err){alert('Impossible d’importer : '+err.message)}});
+if(b.dataset.videoSave){const name=b.dataset.videoSave;const input=[...document.querySelectorAll('[data-video-input]')].find(x=>x.dataset.videoInput===name);const url=(input?.value||'').trim();if(url && !/^https:\/\/(www\.)?(youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}|youtu\.be\/[a-zA-Z0-9_-]{11})(?:[&#?].*)?$/.test(url)){alert('Colle un lien direct vers une vidéo YouTube.');return}data.videoPrefs ||= {};data.videoPrefs[name]=url;persist();render();return}if(b.id==='clear'&&confirm('Effacer définitivement toutes les séances enregistrées sur cet appareil ?')){data.entries={};persist();render()}});document.addEventListener('input',e=>{if(e.target.id==='lexSearch')document.querySelector('#lexItems').innerHTML=lexItems(e.target.value)});document.addEventListener('change',async e=>{if(e.target.dataset.restpref){const val=Number(e.target.value);if(!Number.isFinite(val)||val<0||val>1200){alert('Choisis une durée entre 0 et 1200 secondes.');return}data.restPrefs[e.target.dataset.restpref]=val;persist();const btn=e.target.closest('.exercise')?.querySelector('[data-timer]');if(btn)btn.dataset.timer=val;return}if(e.target.id==='coachFile'){try{const file=e.target.files?.[0];if(!file)return;const r=JSON.parse(await file.text());if(r.format!=='mon-training-coach-v5'||!Array.isArray(r.changes))throw Error('Format attendu : mon-training-coach-v5 et changes[]');if(!r.changes.length||r.changes.length>40)throw Error('Nombre de modifications invalide');const proposed={...data.programOverrides};const preview=[];for(const c of r.changes){if(!['push','pull','legs'].includes(c.session)||!Number.isInteger(c.index)||c.index<0||c.index>=EX[c.session].length)throw Error('Exercice inconnu : '+JSON.stringify(c));const key=c.session+'|'+c.index,base=currentEx(c.session,c.index);const vals={name:String(c.name||base[0]).slice(0,100),description:String(c.description||base[1]).slice(0,180),sets:Number(c.sets??base[2]),kg:Number(c.kg??base[3]),reps:Number(c.reps??base[4]),rest:Number(c.rest??base[5])};if(![vals.sets,vals.kg,vals.reps,vals.rest].every(Number.isFinite)||vals.sets<1||vals.sets>10||vals.kg<0||vals.kg>400||vals.reps<1||vals.reps>100||vals.rest<0||vals.rest>1200)throw Error('Valeur hors limite : '+key);proposed[key]=vals;preview.push(`${base[0]} → ${vals.name} : ${vals.sets}×${vals.reps} à ${vals.kg} kg, repos ${vals.rest} s`)}if(confirm('Appliquer ces modifications ?\n\n'+preview.join('\n')+'\n\nL’ancien programme reste récupérable.')){data.programHistory.push({at:new Date().toISOString(),type:'coach-batch',previous:{...data.programOverrides},previousCycleStart:data.cycleStart});data.programOverrides=proposed;if(r.newCycle===true)data.cycleStart=todayISO();persist();render()}}catch(err){alert('Import impossible : '+err.message)}return}if(e.target.id!=='import')return;try{const r=JSON.parse(await e.target.files[0].text());if(!r.entries||typeof r.entries!=='object')throw Error('Format non reconnu');if(confirm('Remplacer les résultats actuels par cette sauvegarde ?')){data={entries:r.entries,restPrefs:r.restPrefs||{},baseline:r.baseline||data.baseline,programOverrides:r.programOverrides||{},programHistory:r.programHistory||[],progressDecisions:r.progressDecisions||{},likes:r.likes||{},videoPrefs:r.videoPrefs||{},cycleStart:r.cycleStart||'2026-10-12',schedule:r.schedule||{},locationPrefs:r.locationPrefs||{},soundEnabled:r.soundEnabled??true,bandColors:r.bandColors||{},pushupLevels:r.pushupLevels||{},backupReminder:r.backupReminder||{lastAcknowledged:null},ignoredActivities:r.ignoredActivities||{},vacationPeriods:r.vacationPeriods||[],challengesV6:r.challengesV6||{},healthV6:r.healthV6||{},instructionV6:r.instructionV6||[],v604Added:r.v604Added||{},v10Graph:r.v10Graph||'strength'};persist();render()}}catch(err){alert('Impossible d’importer : '+err.message)}});
 // V5.3 — extensions non destructives : les clés de stockage et exports V5.2 restent compatibles.
 data.schedule ||= {}; data.locationPrefs ||= {}; data.soundEnabled ??= true;
 const guardExercises={
@@ -1546,7 +1546,7 @@ function challengeUI(){let count=available();let h='<div class="card"><h2>Mes d�
 }
 let v6HealthOpen=false;
 function healthUI(){const c=data.healthV6.cigarettes||{},day=now(),value=c[day]||0,dates=Array.from({length:7},(_,i)=>plus(day,-i)),sum=dates.reduce((n,d)=>n+(c[d]||0),0);return '<div class="card"><h2>Mon suivi santé</h2><p class="mini">Compteur personnel, sans objectif imposé. Stockage local et sauvegarde JSON.</p><div class="v6-metrics"><div class="card"><h2>'+value+'</h2><small>Cigarettes aujourd’hui</small></div><div class="card"><h2>'+sum+'</h2><small>Sur 7 jours</small></div></div><div class="v6-compact"><button data-v6-cig="-1">− 1</button><button class="primary" data-v6-cig="1">＋ 1 cigarette</button></div><p class="mini">Moyenne sur 7 jours : '+(sum/7).toFixed(1).replace('.',',')+' / jour</p><h3>Historique récent</h3>'+dates.map(d=>'<div class="row"><small>'+d+'</small><b>'+num(c[d])+'</b></div>').join('')+'<button data-v6-health-toggle="1">Fermer mon suivi</button></div>'}
-const tab=document.createElement('button');tab.dataset.tab='challenges';tab.innerHTML='🏁<br>Défis';const nav=document.querySelector('#tabs');nav.insertBefore(tab,nav.querySelector('[data-tab="lexicon"]'));
+const tab=document.createElement('button');tab.dataset.tab='challenges';tab.innerHTML='<span class="mt-nav-icon" aria-hidden="true">🏁</span><span class="mt-nav-label">Défis</span>';const nav=document.querySelector('#tabs');nav.insertBefore(tab,nav.querySelector('[data-tab="lexicon"]'));
 const priorRender=render;render=function(){if(view==='challenges'&&!openId){priorRender();document.querySelector('#app').innerHTML=header()+challengeUI();document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab==='challenges'));}else priorRender();if(openId){enhanceSession()}else if(view==='progress'){enhanceProgress()}else if(view==='today'){enhanceToday()}};
 function enhanceToday(){const i=v6InstructionAt(date);if(i){const app=document.querySelector('#app');app.insertAdjacentHTML('beforeend','<div class="card v6-instruction"><b>Semaine d’instruction</b><p class="mini">Programme normal suspendu pendant cette période. Séances courtes facultatives, adaptables.</p>'+i.sessions.map((x,j)=>'<button data-v6-instruction-open="'+j+'">'+esc6(x.name)+' · '+x.minutes+' min</button>').join('')+'</div>')}}
 function enhanceProgress(){const done=Object.entries(data.entries).filter(([k,v])=>v?.done);const start=isoOf(monday(now())),previous=plus(start,-7),thisW=done.filter(([k])=>k.slice(0,10)>=start&&k.slice(0,10)<=plus(start,6)),prevW=done.filter(([k])=>k.slice(0,10)>=previous&&k.slice(0,10)<start);const names=thisW.map(([k])=>sessions.find(s=>s.id===k.split('|')[1])?.name||k.split('|')[1]);const txt='Cette semaine : '+thisW.length+' activité(s) terminée(s), contre '+prevW.length+' la semaine précédente.';const app=document.querySelector('#app');const hero=app.querySelector('.hero');hero?.insertAdjacentHTML('afterend','<div class="card"><h2>Bilan global de la semaine</h2><p>'+esc6(txt)+'</p><p class="mini">'+(names.length?names.map(esc6).join(' · '):'Aucune activité terminée pour le moment.')+'</p></div>')}
@@ -1579,7 +1579,7 @@ function instructionDefaults(){return [{name:'Instruction A — Haut du corps',m
 function openInstruction(j){const p=v6InstructionAt(date);if(!p)return;const x=p.sessions[j];document.querySelector('#app').innerHTML=header()+'<button data-v6-inst-back="1">← Retour</button><div class="card"><h2>'+esc6(x.name)+'</h2><p class="mini">Modifie librement les exercices (une ligne par exercice).</p><label>Durée estimée (min)<input type="number" id="v6-inst-min" value="'+x.minutes+'"></label><label>Exercices<textarea id="v6-inst-ex">'+esc6(x.exercises.join('\n'))+'</textarea></label><button class="primary" data-v6-inst-save="'+j+'">Enregistrer les modifications</button><button data-v6-inst-done="'+j+'">✓ Séance réalisée</button></div>'}
 function saveInstruction(j){const p=v6InstructionAt(date);if(!p)return;const x=p.sessions[j];x.minutes=Math.max(1,num(document.querySelector('#v6-inst-min')?.value)||25);x.exercises=(document.querySelector('#v6-inst-ex')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean);persist()}
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
-if(b.hasAttribute('data-v6-add')){e.preventDefault();e.stopImmediatePropagation();const id=document.querySelector('#free-select-10b')?.value;if(!sessions.some(s=>s.id===id))return;saveDraft();const ids=[...scheduledIds(date)];if(!ids.includes(id))ids.push(id);data.schedule[date]=ids;delete data.ignoredActivities[date+'|'+id];persist();freeMenu10B=false;render();return}
+if(b.hasAttribute('data-v6-add')){e.preventDefault();e.stopImmediatePropagation();const id=document.querySelector('#free-select-10b')?.value;if(!sessions.some(s=>s.id===id))return;saveDraft();if(v10Vacation(date)?.mode==='free'||v6InstructionAt(date)){data.v604Added ||= {};const added=data.v604Added[date] ||= [];if(!added.includes(id))added.push(id);delete data.ignoredActivities[date+'|'+id];persist();freeMenu10B=false;render();return}const ids=[...scheduledIds(date)];if(!ids.includes(id))ids.push(id);data.schedule[date]=ids;delete data.ignoredActivities[date+'|'+id];persist();freeMenu10B=false;render();return}
 if(b.hasAttribute('data-v6-attempt')){e.preventDefault();e.stopImmediatePropagation();const [id,l]=b.dataset.v6Attempt.split('|'),level=+l,def=defs.find(x=>x[0]===id),v=Number(document.getElementById('v6-val-'+id+'-'+level)?.value);if(!def||!Number.isFinite(v)||v<=0){alert('Indique une performance supérieure à zéro.');return}const c=data.challengesV6[id]||{levels:[],attempts:[]};c.attempts.push({date:now(),level,value:v});const threshold=def[3][level],ok=!threshold||(def[4]==='min'?v<=threshold:v>=threshold);if(ok&&!c.levels.includes(level))c.levels.push(level);data.challengesV6[id]=c;persist();render();return}
 if(b.hasAttribute('data-v6-custom-create')){const name=document.querySelector('#v6-custom-name')?.value.trim(),goal=num(document.querySelector('#v6-custom-goal')?.value),unit=document.querySelector('#v6-custom-unit')?.value;if(!name||goal<=0)return alert('Nom et objectif nécessaires.');data.challengesV6.custom ||= [];data.challengesV6.custom.push({name:name.slice(0,90),goal,unit,attempts:[]});persist();render();return}
 if(b.hasAttribute('data-v6-custom-attempt')){const i=+b.dataset.v6CustomAttempt,v=Number(document.querySelector('#v6-custom-value-'+i)?.value);if(!Number.isFinite(v)||v<=0)return alert('Performance invalide.');data.challengesV6.custom[i].attempts.push({date:now(),value:v});persist();render();return}
@@ -1596,8 +1596,77 @@ if(b.hasAttribute('data-v6-setremove')){const i=+b.dataset.v6Setremove;const s=s
 if(b.hasAttribute('data-v6-exremove')){alert('La suppression permanente d’un exercice nécessite une modification du programme dans Données. Les séries saisies sont conservées.');return}
 if(b.hasAttribute('data-v6-exup')||b.hasAttribute('data-v6-exdown')){alert('Réorganisation des exercices : fonction en préparation pour préserver l’association avec les séries historiques.');return}
 },true);
+// V6.0.4 : les périodes suspendent le planning, mais les activités choisies restent accessibles.
+data.v604Added ||= {};
+const v604AllBefore=all;
+all=function(d){const vacation=v10Vacation(d),instruction=v6InstructionAt(d);
+ if((vacation&&vacation.mode!=='normal')||instruction){
+  const ids=data.v604Added?.[d]||[];
+  return ids.map(id=>sessions.find(s=>s.id===id)).filter(Boolean);
+ }
+ return v604AllBefore(d);
+};
+const v604ScheduledBefore=scheduledIds;
+scheduledIds=function(d){if((v10Vacation(d)?.mode==='free')||v6InstructionAt(d))return [...(data.v604Added?.[d]||[])];return v604ScheduledBefore(d)};
+const v604TodayBefore=renderToday;
+renderToday=function(){
+ const vacation=v10Vacation(date),instruction=v6InstructionAt(date);
+ if(!vacation||vacation.mode==='normal')return v604TodayBefore();
+ const active=all(date),entries=Object.entries(data.entries||{}).filter(([k,v])=>k.startsWith(date+'|')&&v?.done),listed=new Set(active.map(s=>s.id));
+ const cards=active.map(s=>`<button class="card row" style="width:100%;text-align:left" data-open="${esc(s.id)}"><span><b>${esc(s.name)}</b><br><small>${get(s.id,date).done?'✓ Terminée':'À réaliser · Ouvrir la fiche complète'}</small></span><span>›</span></button>`).join('');
+ const historic=entries.filter(([k])=>!listed.has(k.slice(11))).map(([k,v])=>{const id=k.slice(11),s=sessions.find(x=>x.id===id);return `<button class="card row" style="width:100%;text-align:left" data-open="${esc(id)}"><span>✓ ${esc(s?.name||v.activityName||'Activité terminée')}</span><span>›</span></button>`}).join('');
+ const menu=vacation.mode==='free'?`<div class="card"><button class="primary" data-free-toggle-10b="1">${freeMenu10B?'− Fermer les activités':'＋ Ajouter une activité'}</button>${freeMenu10B?FREE_MENU10B():''}</div>`:'';
+ return `<div class="row"><button data-shift="-7">‹ Sem.</button><b>${esc(v10DateLabel(date))}</b><button data-shift="7">Sem. ›</button></div>${dayButtons()}<div class="card"><h2>Vacances · ${vacation.mode==='pause'?'Pause complète':'Activités libres'}</h2><p class="mini">Programme habituel suspendu jusqu’au ${esc(vacation.end)}. Aucun entraînement à rattraper.</p><b>${cards||historic?'Activités de la journée':'Repos'}</b></div>${cards}${historic}${menu}`;
+};
+const v604WeekBefore=renderWeek;
+renderWeek=function(){if(!v10Vacation(date)&&!v6InstructionAt(date))return v604WeekBefore();const m=isoOf(monday(date));return `<div class="row"><button data-shift="-7">‹</button><b>Semaine du ${esc(m)}</b><button data-shift="7">›</button></div>`+DAYS.map((n,i)=>{const d=plus(m,i),vac=v10Vacation(d),ins=v6InstructionAt(d),ids=all(d);return `<div class="card"><div class="row"><b>${esc(n)} ${d.slice(8)}</b><button data-date="${d}">Ouvrir</button></div><small>${vac?'Vacances':ins?'Instruction':'Programme habituel'} · ${ids.length?ids.map(s=>esc(s.name)).join(' · '):'Repos'}</small></div>`}).join('')};
 // L'import JSON existant conserve désormais les champs V6, les vacances et les séances ignorées.
-const v6Header=header;header=function(){return v6Header().replace(/V5\.3\.[0-9a-z.]+(?: TEST)?/gi,'V6.0.1 TEST')};
+const v6Header=header;header=function(){return v6Header().replace(/V5\.3\.[0-9a-z.]+(?: TEST)?/gi,'V6.0.4 TEST')};
 render();
 })();
-</script></body></html>
+</script><style id="mt-v603-bottom-navigation">
+/* V6.0.3: five equally spaced, centered iPhone navigation buttons. */
+html body nav#tabs.tabs {
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  align-items:stretch!important;
+  justify-content:stretch!important;
+  overflow-x:hidden!important;
+  gap:0!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+  padding:7px max(3px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(3px,env(safe-area-inset-left))!important;
+}
+html body nav#tabs.tabs > button[data-tab] {
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:center!important;
+  gap:5px!important;
+  min-width:0!important;
+  max-width:none!important;
+  width:100%!important;
+  margin:0!important;
+  padding:5px 1px!important;
+  box-sizing:border-box!important;
+  text-align:center!important;
+  font-size:clamp(10px,2.65vw,13px)!important;
+  line-height:1.15!important;
+  white-space:nowrap!important;
+}
+html body nav#tabs.tabs .mt-nav-icon {
+  display:block!important;
+  font-size:clamp(27px,7.3vw,33px)!important;
+  line-height:1.05!important;
+  width:100%!important;
+  text-align:center!important;
+}
+html body nav#tabs.tabs .mt-nav-label {
+  display:block!important;
+  width:100%!important;
+  text-align:center!important;
+  overflow:hidden!important;
+  text-overflow:clip!important;
+}
+@media(max-width:355px){html body nav#tabs.tabs > button[data-tab]{font-size:10px!important;gap:4px!important}}
+</style></body></html>
