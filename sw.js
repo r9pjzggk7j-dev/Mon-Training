@@ -1,4 +1,4 @@
-const CACHE='mon-training-v6-0-4-vacances-test';
+const CACHE='mon-training-v6-0-4-correctif-1910';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png','./hero-v534r.webp','./progress-v534u.webp','./lexicon-v534u.webp','./settings-v534u.webp'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('mon-training-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
