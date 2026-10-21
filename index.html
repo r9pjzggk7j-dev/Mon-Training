@@ -898,7 +898,7 @@ const v10CSS=document.createElement('style');v10CSS.textContent=`.v10-bars{displ
 const SPORTS10B=[['sportRun10b','Course à pied'],['sportCycle10b','Vélo extérieur'],['sportWalk10b','Marche'],['sportHike10b','Randonnée'],['sportSwim10b','Natation'],['sportBasket10b','Basketball']];
 for(const [id,name] of SPORTS10B)if(!sessions.some(s=>s.id===id))sessions.push({id,name,day:-1,kind:'custom39'});
 const ALL_FREE10B=[['push39','PUSH'],['pull39','PULL'],['upper39','UPPER'],['legs39','LEGS — Salle'],['lower39','Mobilité / jambes'],['mob39','Mobilité'],['stretch39','Étirements'],['push39a','Pompes — Volume'],['push39b','Pompes — Technique'],['bikeEnd39','BikeErg endurance'],['bikeEasy39','BikeErg facile'],['bikeHard39','BikeErg intervalles'],['wod39','WOD'],...SPORTS10B,['free39','Autre activité personnalisée']];
-const FREE_MENU10B=()=>`<div class="card"><h2>Ajouter une activité</h2><p class="mini">Choisis une séance de ton programme ou une activité sportive. Tu retrouveras son formulaire habituel et l'enregistrement à la date sélectionnée.</p><label>Activité<select id="free-select-10b"><optgroup label="Mes séances">${ALL_FREE10B.slice(0,13).map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('')}</optgroup><optgroup label="Cardio et sport">${SPORTS10B.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('')}</optgroup><optgroup label="Personnalisée"><option value="free39">Autre activité</option></optgroup></select></label><button class="primary" data-v6-add="1">＋ Ajouter au planning</button><button data-free-open-10b="1">Ouvrir sans planifier</button><button data-free-close-10b="1">Annuler</button></div>`;
+let FREE_MENU10B=()=>`<div class="card"><h2>Ajouter une activité</h2><p class="mini">Choisis une séance de ton programme ou une activité sportive. Tu retrouveras son formulaire habituel et l'enregistrement à la date sélectionnée.</p><label>Activité<select id="free-select-10b"><optgroup label="Mes séances">${ALL_FREE10B.slice(0,13).map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('')}</optgroup><optgroup label="Cardio et sport">${SPORTS10B.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('')}</optgroup><optgroup label="Personnalisée"><option value="free39">Autre activité</option></optgroup></select></label><button class="primary" data-v6-add="1">＋ Ajouter au planning</button><button data-free-open-10b="1">Ouvrir sans planifier</button><button data-free-close-10b="1">Annuler</button></div>`;
 let freeMenu10B=false;
 const oldToday10B=renderToday;
 renderToday=function(){let h=oldToday10B();const vac=v10Vacation(date);if(vac?.mode==='pause')return h;const block=`<div class="card"><button class="primary" data-free-toggle-10b="1">${freeMenu10B?'− Fermer les activités libres':'＋ Ajouter une activité libre'}</button>${freeMenu10B?FREE_MENU10B():''}</div>`;return h+block;};
@@ -1289,7 +1289,7 @@ render=function(){
  app.querySelectorAll('.hero > small').forEach(el=>el.remove());
  if(view==='settings'&&!openId){
    const v=document.createElement('p');v.className='mt534h-version';
-   v.textContent='Mon Training V7.0 TEST · Stockage local';
+   v.textContent='Mon Training V7.1 TEST · Stockage local';
    app.appendChild(v);
  }
 };
@@ -1480,7 +1480,7 @@ const style=document.createElement('style');style.id='mt534q-final-style';style.
 })();
 </script>
 <style id="mt534u-fullbleed">
-/* V7.0 TEST — new artwork, full-bleed mobile banners, no inset/padding in image. */
+/* V7.1 TEST — new artwork, full-bleed mobile banners, no inset/padding in image. */
 html body main#app.mt534l-progress > .hero:not(.mt534f-home-hero),
 html body main#app.mt534l-lexicon > .hero:not(.mt534f-home-hero),
 html body main#app.mt534l-settings > .hero:not(.mt534f-home-hero){
@@ -1679,11 +1679,94 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if(b.hasAttribute('data-v7-program')){e.preventDefault();e.stopImmediatePropagation();if(!confirm('Enregistrer cette composition pour les prochaines séances ? Les séances passées ne seront pas modifiées.'))return;data.v7.programs ||= {};data.v7.programs[openId]=JSON.parse(JSON.stringify(EX[openId]||[]));persist();alert('Programme habituel enregistré.');return}
  if(b.hasAttribute('data-v7-steps')){e.preventDefault();e.stopImmediatePropagation();const v=get(openId,date),existing=v.v7Steps||((CUSTOM39[openId]||MOB||[]).map(x=>x[0]));const txt=prompt('Un exercice par ligne. Tu peux ajouter, retirer ou réordonner :',existing.join('\n'));if(txt===null)return;set(openId,date,{v7Steps:txt.split('\n').map(x=>x.trim()).filter(Boolean)});render();return}
 },true);
+// V7.1 — correctifs iPhone. Aucune migration ou suppression de données enregistrées.
+const V71_CATALOG={
+'Pectoraux':['Développé couché','Développé incliné haltères','Pec Deck','Écartés poulie','Pompes','Dips assistés'],
+'Dos':['Tirage vertical prise neutre','Tirage vertical pronation','Rowing poitrine soutenue','Rowing poulie basse','Rowing unilatéral haltère','Tractions assistées','Pullover à la poulie'],
+'Épaules':['Reverse fly / oiseau','Face pull','Élévations latérales','Développé épaules haltères','Oiseau à la poulie'],
+'Biceps':['Curl biceps machine','Curl à la poulie corde','Curl marteau haltères','Curl incliné','Curl pupitre'],
+'Triceps':['Extension triceps poulie','Extension triceps corde','Barre au front','Dips sur banc'],
+'Jambes':['Presse à cuisses','Squat','Fentes','Leg extension','Leg curl','Hip thrust','Mollets debout'],
+'Abdominaux':['Gainage','Crunch à la poulie','Relevés de jambes','Dead bug','V-ups']};
+// Une seule proposition BikeErg dans tous les sélecteurs, y compris les menus de vacances.
+ALL_FREE10B.splice(0,ALL_FREE10B.length,...ALL_FREE10B.filter(([id])=>!V7_BIKES.has(id)));
+ALL_FREE10B.splice(10,0,['bikeV7','BikeErg — durée libre']);
+const v71FreeMenuBefore=FREE_MENU10B;
+FREE_MENU10B=()=>v71FreeMenuBefore().replace(/<option value="(?:bikeEnd39|bikeEasy39|bikeHard39|bike1|bike2|bike3|guardBike)"[^>]*>[^<]*<\/option>/g,'');
+// Les anciens choix ne sont pas effacés des historiques.
+const v71SessionBefore=renderSession;
+renderSession=function(){
+ if(openId==='bikeV7'){
+  const v=get(openId,date);
+  return `<button data-back="1">← Retour</button><div class="card"><h2>BikeErg — durée libre</h2><small>${esc(date)} · Saisie après la séance</small><p class="mini">Renseigne les valeurs réellement affichées sur le moniteur. Aucun objectif de durée imposé.</p><div class="grid">${formInput('Durée réelle (minutes)','minutes',v.minutes??'')}${formInput('Distance (mètres)','distance',v.distance??'')}${formInput('Puissance moyenne (watts)','watts',v.watts??'')}${formInput('Cadence moyenne (tr/min)','rpm',v.rpm??'')}${formInput('Calories (kcal)','calories',v.calories??'')}${formInput('RPE /10','v7Rpe',v.v7Rpe??v.effort??'')}</div><label>Ressenti et commentaires<textarea data-field="notes">${esc(v.notes||'')}</textarea></label><button class="primary" style="width:100%" data-save="1">${v.done?'✓ Mettre à jour la séance':'✓ Terminer la séance'}</button><button data-back="1">Retour</button></div>`;
+ }
+ return v71SessionBefore().replace(/<button type="button" data-mt534-minus-set="\d+">[^<]*<\/button>/g,'');
+};
+// Choix guidé des exercices ; conserver la saisie libre pour les exercices absents.
+const v71SessionWithCatalog=renderSession;
+renderSession=function(){let h=v71SessionWithCatalog();if(!openId||!h.includes('data-v7-exadd'))return h;
+ const groups=Object.entries(V71_CATALOG).map(([g,items])=>`<optgroup label="${esc(g)}">${items.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>`).join('');
+ return h.replace('<button data-v7-exadd="1">＋ Ajouter un exercice</button>',`<label>Choisir un exercice du catalogue<select id="v71-exercise-catalog">${groups}<option value="__custom__">＋ Créer un exercice personnalisé…</option></select></label><button data-v71-add-ex="1">＋ Ajouter cet exercice</button>`);
+};
+// Consolider les séances prévues, les activités libres et les défis au même niveau.
+function v71UnifyToday(){
+ if(view!=='today'||openId)return;
+ const app=document.querySelector('#app');if(!app)return;
+ const completed=Object.entries(data.entries||{}).filter(([k,v])=>k.startsWith(date+'|')&&v?.done);
+ const scheduled=all(date).filter(s=>!V7_BIKES.has(s.id));
+ const seen=new Set();const rows=[];
+ for(const s of scheduled){seen.add(s.id);const v=get(s.id,date);rows.push(`<button class="today-task" data-open="${esc(s.id)}"><span><b>${esc(s.name)}</b><br><small>${v.done?'✓ Terminée':'○ À réaliser'}</small></span><span>Ouvrir ›</span></button>`)}
+ for(const [k,v] of completed){const id=k.slice(11);if(seen.has(id))continue;seen.add(id);const sess=sessions.find(s=>s.id===id);rows.push(`<button class="today-task" data-open="${esc(id)}"><span><b>${esc(sess?.name||v.activityName||id)}</b><br><small>✓ Terminée</small></span><span>Ouvrir ›</span></button>`)}
+ for(const a of v605AttemptsFor(date)){rows.push(`<div class="today-task v71-challenge"><span><b>Défi — ${esc6(a.name)}</b><br><small>Essayé ce jour · ${labelUnit(a.value,a.unit)}</small></span></div>`)}
+ if(!rows.length)return;
+ // Retirer les blocs redondants générés par les anciennes couches d'interface.
+ for(const card of [...app.children]){
+  if(card.matches('button[data-open]')){card.remove();continue}
+  if(!card.matches('.card'))continue;
+  const heading=card.querySelector('h2,b');const title=(heading?.textContent||'').trim();
+  if(/^(Activités ajoutées|Autres activités enregistrées|Défis essayés ce jour)/i.test(title))card.remove();
+ }
+ // Dans les blocs d'accès aux activités, les éléments terminés déjà affichés sont masqués.
+ for(const card of [...app.querySelectorAll('.card')]){
+  if(card.id==='v10d-activities'||card.querySelector('h2')?.textContent?.includes('Défis essayés ce jour'))card.remove();
+  else if(card.querySelector(':scope > b')?.textContent?.includes('Autres activités enregistrées'))card.remove();
+ }
+ const block=document.createElement('div');block.className='card';block.id='v71-day-list';block.innerHTML=`<h2>Activités du ${esc(v10DateLabel(date))}</h2>`+rows.join('');
+ const daybar=app.querySelector('.days');const after=daybar?.nextElementSibling;
+ if(after)after.before(block);else app.prepend(block);
+ // Le bouton BikeErg isolé fait doublon avec « Ajouter une activité ».
+ app.querySelectorAll('[data-v7-addbike]').forEach(b=>{if(b.closest('.card')?.querySelectorAll('button').length===1)b.closest('.card').remove();else b.remove()});
+}
+const v71RenderBefore=render;
+render=function(){v71RenderBefore();
+ if(view==='today'&&!openId){
+  const menu=document.querySelector('#free-select-10b');if(menu){[...menu.options].filter(o=>V7_BIKES.has(o.value)).forEach(o=>o.remove());if(![...menu.options].some(o=>o.value==='bikeV7')){const o=document.createElement('option');o.value='bikeV7';o.textContent='BikeErg — durée libre';menu.add(o)}}
+  v71UnifyToday();
+ }
+};
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-v71-add-ex]');if(!b||!openId)return;
+ e.preventDefault();e.stopImmediatePropagation();
+ const select=document.querySelector('#v71-exercise-catalog');let name=select?.value;
+ if(name==='__custom__')name=prompt('Nom de ton exercice personnalisé :')?.trim();
+ if(!name)return;
+ saveDraft();
+ const existing=EX[openId];if(!Array.isArray(existing))return;
+ // Les ajouts à la séance du jour sont conservés dans son instantané, sans toucher aux autres séances.
+ const v=get(openId,date),snapshot=structuredClone(v.exerciseSnapshot||activeEx(openId));
+ snapshot.push([name,'Exercice ajouté',3,'',12,90]);
+ set(openId,date,{exerciseSnapshot:snapshot});
+ render();
+},true);
+// Éviter la création d'un doublon dans le programme global si un instantané existe.
+const v71ActiveExBefore=activeEx;
+activeEx=function(id){if(id===openId){const snap=get(id,date).exerciseSnapshot;if(Array.isArray(snap)&&snap.length)return snap}return v71ActiveExBefore(id)};
+
 // Programme personnel restauré uniquement si explicitement enregistré auparavant.
 for(const [id,ex] of Object.entries(data.v7.programs||{}))if(Array.isArray(ex)&&EX[id])EX[id]=ex;
 
 // L'import JSON existant conserve désormais les champs V6, les vacances et les séances ignorées.
-const v6Header=header;header=function(){return v6Header().replace(/V5\.3\.[0-9a-z.]+(?: TEST)?/gi,'V7.0 TEST')};
+const v6Header=header;header=function(){return v6Header().replace(/V5\.3\.[0-9a-z.]+(?: TEST)?/gi,'V7.1 TEST')};
 render();
 })();
 </script><style id="mt-v603-bottom-navigation">
