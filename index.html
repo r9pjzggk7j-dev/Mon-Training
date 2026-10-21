@@ -1289,7 +1289,7 @@ render=function(){
  app.querySelectorAll('.hero > small').forEach(el=>el.remove());
  if(view==='settings'&&!openId){
    const v=document.createElement('p');v.className='mt534h-version';
-   v.textContent='Mon Training V6.0.5 TEST · Stockage local';
+   v.textContent='Mon Training V7.0 TEST · Stockage local';
    app.appendChild(v);
  }
 };
@@ -1480,7 +1480,7 @@ const style=document.createElement('style');style.id='mt534q-final-style';style.
 })();
 </script>
 <style id="mt534u-fullbleed">
-/* V6.0.5 TEST — new artwork, full-bleed mobile banners, no inset/padding in image. */
+/* V7.0 TEST — new artwork, full-bleed mobile banners, no inset/padding in image. */
 html body main#app.mt534l-progress > .hero:not(.mt534f-home-hero),
 html body main#app.mt534l-lexicon > .hero:not(.mt534f-home-hero),
 html body main#app.mt534l-settings > .hero:not(.mt534f-home-hero){
@@ -1622,8 +1622,68 @@ renderToday=function(){
 };
 const v604WeekBefore=renderWeek;
 renderWeek=function(){if(!v10Vacation(date)&&!v6InstructionAt(date))return v604WeekBefore();const m=isoOf(monday(date));return `<div class="row"><button data-shift="-7">‹</button><b>Semaine du ${esc(m)}</b><button data-shift="7">›</button></div>`+DAYS.map((n,i)=>{const d=plus(m,i),vac=v10Vacation(d),ins=v6InstructionAt(d),ids=all(d);return `<div class="card"><div class="row"><b>${esc(n)} ${d.slice(8)}</b><button data-date="${d}">Ouvrir</button></div><small>${vac?'Vacances':ins?'Instruction':'Programme habituel'} · ${ids.length?ids.map(s=>esc(s.name)).join(' · '):'Repos'}</small></div>`}).join('')};
+// V7 TEST — évolutions non destructives : toutes les anciennes entrées restent lisibles.
+const V7_BIKES=new Set(['bike1','bike2','bike3','bikeEnd39','bikeEasy39','bikeHard39','guardBike']);
+if(!sessions.some(s=>s.id==='bikeV7'))sessions.push({id:'bikeV7',name:'BikeErg — durée libre',day:-1,kind:'bike'});
+const v7Pull=[['Tirage vertical prise neutre','4 × 8–12 · amplitude indolore',4,60,10,120],['Rowing poitrine soutenue','4 × 8–12',4,50,10,120],['Reverse fly / oiseau','3 × 12–20 · arrière d’épaule',3,'',15,75],['Face pull','3 × 15–20 · contrôle scapulaire',3,25,17,75],['Curl biceps machine','4 × 10–12 · prise confortable',4,'',11,90],['Curl à la poulie corde','2 × 12–15 · léger, si avant-bras indolore',2,'',13,75]];
+// Le nouveau programme ne modifie pas les instantanés d'exercices des séances terminées.
+EX.pull39=v7Pull;
+data.v7 ||= {calendarMonth:todayISO().slice(0,7),challengeMonth:todayISO().slice(0,7)};
+const v7OldAll=all;
+all=function(d){const arr=v7OldAll(d);return arr.filter(s=>!V7_BIKES.has(s.id)).map(s=>s)};
+const v7OldScheduled=scheduledIds;
+scheduledIds=function(d){return v7OldScheduled(d).filter(id=>!V7_BIKES.has(id))};
+const v7OldToday=renderToday;
+renderToday=function(){let h=v7OldToday();return h.replace(/BikeErg — Endurance 35–40 min|BikeErg — Facile 30 min|BikeErg — Intervalles/g,'BikeErg — durée libre')};
+const v7OldSession=renderSession;
+renderSession=function(){let h=v7OldSession(),s=sessions.find(x=>x.id===openId);if(!s)return h;
+ if(s.id==='bikeV7')h=h.replace(/Endurance facile, RPE 3–4\/10|Endurance régulière RPE 4–5\/10/g,'Choisis librement ta durée et ton intensité.').replace(/value="20"/,'value=""');
+ const v=get(openId,date);
+ const rating='<div class="card"><label>Effort ressenti global (RPE /10, facultatif)<input data-field="v7Rpe" type="number" min="1" max="10" step="1" value="'+esc6(v.v7Rpe??'')+'"></label></div>';
+ h+=rating;
+ if(s.kind==='strength'||s.id==='pull39'||s.id==='push39'||s.id==='upper39'||s.id==='legs39')h+='<div class="card"><h3>Adapter les exercices</h3><p class="mini">La modification de ce jour est indépendante du programme des prochaines séances.</p><button data-v7-exadd="1">＋ Ajouter un exercice</button><button data-v7-program="1">Enregistrer cette composition comme programme habituel</button></div>';
+ else if(['pushups','mobility','custom39','knee','wod'].includes(s.kind))h+='<div class="card"><h3>Adapter la séance</h3><button data-v7-steps="1">Modifier les exercices de ce jour</button></div>';
+ return h;
+};
+// Les statistiques sont basées exclusivement sur les activités terminées et les essais de défis.
+const v7OldProgress=renderProgress;
+renderProgress=function(){
+ const rows=Object.entries(data.entries||{}).filter(([k,v])=>v?.done), attempts=[];
+ for(const def of defs)for(const a of data.challengesV6?.[def[0]]?.attempts||[])attempts.push({date:a.date,name:def[1],value:a.value,unit:def[2]});
+ for(const c of data.challengesV6?.custom||[])for(const a of c.attempts||[])attempts.push({date:a.date,name:c.name,value:a.value,unit:c.unit});
+ const uniqueAttempts=attempts.filter(a=>a.date);
+ const d=todayISO(),m=d.slice(0,7),w=isoOf(monday(d));
+ const calc=(start,end)=>{const r=rows.filter(([k])=>k.slice(0,10)>=start&&k.slice(0,10)<=end),a=uniqueAttempts.filter(x=>x.date>=start&&x.date<=end);const b=r.filter(([k])=>/bike/i.test(k.split('|')[1]));return {activities:r.length+a.length,days:new Set([...r.map(([k])=>k.slice(0,10)),...a.map(x=>x.date)]).size,minutes:b.reduce((n,[,v])=>n+(Number(v.minutes)||0),0),calories:b.reduce((n,[,v])=>n+(Number(v.calories)||0),0)};};
+ const weekly=calc(w,plus(w,6)),monthly=calc(m+'-01',m+'-31');
+ const stat=(n,l)=>'<div class="card"><h2>'+esc6(n)+'</h2><small>'+esc6(l)+'</small></div>';
+ const summary='<h2>Vue d’ensemble — V7</h2><div class="grid">'+stat(weekly.activities,'Activités cette semaine')+stat(monthly.activities,'Activités ce mois')+stat(monthly.days,'Jours actifs ce mois')+stat(weekly.minutes+' min','BikeErg cette semaine')+stat(monthly.minutes+' min','BikeErg ce mois')+stat(Math.round(weekly.calories)+' kcal','Calories BikeErg cette semaine')+stat(Math.round(monthly.calories)+' kcal','Calories BikeErg ce mois')+'</div>';
+ const month=data.v7.calendarMonth||m,first=new Date(month+'-01T12:00:00'),offset=(first.getDay()+6)%7,count=new Date(+month.slice(0,4),+month.slice(5),0).getDate();
+ const days=Array.from({length:offset},()=>'<span></span>').concat(Array.from({length:count},(_,i)=>{const x=month+'-'+String(i+1).padStart(2,'0'),n=rows.filter(([k])=>k.startsWith(x)).length+uniqueAttempts.filter(a=>a.date===x).length;return '<button data-v7-day="'+x+'" class="v7-day '+(n?'v7-active':'')+'">'+(i+1)+(n?'<small>'+n+'</small>':'')+'</button>'}));
+ const selected=data.v7.selectedDay||d,activities=rows.filter(([k])=>k.startsWith(selected)),dayAttempts=uniqueAttempts.filter(a=>a.date===selected);
+ const history='<div class="card"><div class="row"><button data-v7-month="-1">‹</button><b>Calendrier des activités · '+esc6(month)+'</b><button data-v7-month="1">›</button></div><div class="v7-calendar">'+['L','M','M','J','V','S','D'].map(x=>'<b>'+x+'</b>').join('')+days.join('')+'</div><h3>'+esc6(selected.split('-').reverse().join('/'))+'</h3>'+activities.map(([k])=>'<button class="card row" data-history="'+esc6(k)+'">'+esc6(sessions.find(s=>s.id===k.split('|')[1])?.name||k.split('|')[1])+' ›</button>').join('')+dayAttempts.map(a=>'<p>'+esc6(a.name)+' · '+labelUnit(a.value,a.unit)+'</p>').join('')+(activities.length+dayAttempts.length?'':'<p class="mini">Aucune activité ce jour.</p>')+'</div>';
+ const challengeMonth=data.v7.challengeMonth||m,challengeRows=uniqueAttempts.filter(a=>a.date.startsWith(challengeMonth));
+ const challenges='<div class="card"><div class="row"><button data-v7-chmonth="-1">‹</button><b>Historique des défis · '+esc6(challengeMonth)+'</b><button data-v7-chmonth="1">›</button></div>'+challengeRows.sort((a,b)=>b.date.localeCompare(a.date)).map(a=>'<div class="row"><span>'+esc6(a.date)+' · '+esc6(a.name)+'</span><b>'+labelUnit(a.value,a.unit)+'</b></div>').join('')+'<p class="mini">'+(challengeRows.length?'':'Aucun essai ce mois.')+'</p></div>';
+ return summary+history+challenges+'<p class="mini">Les anciennes séances sont conservées, même lorsqu’elles ne figurent plus dans le programme actuel.</p>';
+};
+const v7OldChallengeUI=challengeUI;
+challengeUI=function(){let h=v7OldChallengeUI();for(const def of defs){const c=data.challengesV6?.[def[0]],last=(c?.attempts||[]).at(-1);if(last){const target=esc6(def[1]);const needle='<b>'+target+'</b>';h=h.replace(needle,needle+' <small>· dernier essai : '+esc6(last.date||'date non renseignée')+' ('+labelUnit(last.value,def[2])+')</small>');}}return h};
+function v7ShiftMonth(s,delta){const [y,m]=s.split('-').map(Number),d=new Date(y,m-1+delta,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+const v7OldRender=render;
+render=function(){v7OldRender();if(view==='today'&&!openId){const app=document.querySelector('#app');const buttons=app?.querySelectorAll('button[data-open]')||[];buttons.forEach(b=>{if(V7_BIKES.has(b.dataset.open))b.dataset.open='bikeV7'});const active=all(date);if(!active.some(s=>s.kind==='bike'))app?.insertAdjacentHTML('beforeend','<div class="card"><button data-v7-addbike="1">＋ Ajouter BikeErg — durée libre</button></div>');const attempts=app?.querySelector('h2');const block=app?.querySelector('.card:last-child');if(block&&block.textContent.includes('Défis essayés ce jour')){const target=app.querySelector('[data-open]')?.closest('.card');if(target)target.before(block)}}};
+function v7SaveBackup(){try{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mon-training-v7-'+todayISO()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}catch(e){alert('Export impossible : '+e.message)}}
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.hasAttribute('data-v7-day')){e.preventDefault();e.stopImmediatePropagation();data.v7.selectedDay=b.dataset.v7Day;persist();render();return}
+ if(b.hasAttribute('data-v7-month')||b.hasAttribute('data-v7-chmonth')){e.preventDefault();e.stopImmediatePropagation();const ch=b.hasAttribute('data-v7-chmonth'),key=ch?'challengeMonth':'calendarMonth';data.v7[key]=v7ShiftMonth(data.v7[key]||todayISO().slice(0,7),Number(ch?b.dataset.v7Chmonth:b.dataset.v7Month));persist();render();return}
+ if(b.hasAttribute('data-v7-addbike')){e.preventDefault();e.stopImmediatePropagation();data.v604Added ||= {};data.v604Added[date] ||= [];if(!data.v604Added[date].includes('bikeV7'))data.v604Added[date].push('bikeV7');data.schedule ||= {};if(!data.schedule[date])data.schedule[date]=scheduledIds(date);if(!data.schedule[date].includes('bikeV7'))data.schedule[date].push('bikeV7');persist();openId='bikeV7';render();return}
+ if(b.hasAttribute('data-v7-exadd')){e.preventDefault();e.stopImmediatePropagation();const name=prompt('Nom du nouvel exercice :');if(!name?.trim())return;saveDraft();const ex=EX[openId]||[];ex.push([name.trim(),'Exercice ajouté',3,'',12,90]);persist();render();return}
+ if(b.hasAttribute('data-v7-program')){e.preventDefault();e.stopImmediatePropagation();if(!confirm('Enregistrer cette composition pour les prochaines séances ? Les séances passées ne seront pas modifiées.'))return;data.v7.programs ||= {};data.v7.programs[openId]=JSON.parse(JSON.stringify(EX[openId]||[]));persist();alert('Programme habituel enregistré.');return}
+ if(b.hasAttribute('data-v7-steps')){e.preventDefault();e.stopImmediatePropagation();const v=get(openId,date),existing=v.v7Steps||((CUSTOM39[openId]||MOB||[]).map(x=>x[0]));const txt=prompt('Un exercice par ligne. Tu peux ajouter, retirer ou réordonner :',existing.join('\n'));if(txt===null)return;set(openId,date,{v7Steps:txt.split('\n').map(x=>x.trim()).filter(Boolean)});render();return}
+},true);
+// Programme personnel restauré uniquement si explicitement enregistré auparavant.
+for(const [id,ex] of Object.entries(data.v7.programs||{}))if(Array.isArray(ex)&&EX[id])EX[id]=ex;
+
 // L'import JSON existant conserve désormais les champs V6, les vacances et les séances ignorées.
-const v6Header=header;header=function(){return v6Header().replace(/V5\.3\.[0-9a-z.]+(?: TEST)?/gi,'V6.0.5 TEST')};
+const v6Header=header;header=function(){return v6Header().replace(/V5\.3\.[0-9a-z.]+(?: TEST)?/gi,'V7.0 TEST')};
 render();
 })();
 </script><style id="mt-v603-bottom-navigation">
