@@ -1922,7 +1922,7 @@ html body nav#tabs.tabs .mt-nav-label {
   text-overflow:clip!important;
 }
 @media(max-width:355px){html body nav#tabs.tabs > button[data-tab]{font-size:10px!important;gap:4px!important}}
-</style><script id="mt-v724-vacances">
+</style><script id="mt-v725-vacances">
 // Programme vacances facultatif, sans écraser les séances ni les sauvegardes existantes.
 (function(){
 const PLAN={
@@ -1940,7 +1940,43 @@ const prev=renderToday;
 renderToday=function(){const html=prev();return PLAN[date]?html+card():html};
 document.addEventListener('change',e=>{if(!e.target.matches('[data-vac-task]'))return;const day=date;data.vacationMiniPlan||={};const v=data.vacationMiniPlan[day]||{checks:[],notes:''};v.checks[Number(e.target.dataset.vacTask)]=e.target.checked;data.vacationMiniPlan[day]=v;persist()},true);
 document.addEventListener('input',e=>{if(!e.target.matches('[data-vac-notes]'))return;const day=date;data.vacationMiniPlan||={};const v=data.vacationMiniPlan[day]||{checks:[],notes:''};v.notes=e.target.value;data.vacationMiniPlan[day]=v;persist()},true);
+// V7.2.5 — période vacances effective du 24 octobre au 1er novembre inclus.
+// La programmation normale reprend le lundi 2 novembre, sans toucher aux entrées passées.
+const AUTO_VAC={start:'2026-10-24',end:'2026-11-01',mode:'free',mtAutoVacation2026:true};
+data.vacationPeriods ||= [];
+const priorAutoIndex=data.vacationPeriods.findIndex(p=>p.mtAutoVacation2026);
+if(priorAutoIndex>=0)data.vacationPeriods.splice(priorAutoIndex,1);
+data.vacationPeriods.unshift(AUTO_VAC);
+persist();
+// Les fiches vacances apparaissent en premier ; les séances habituelles sont suspendues.
+const mt725TodayBefore=renderToday;
+renderToday=function(){
+ const h=mt725TodayBefore();
+ if(!PLAN[date])return h;
+ const start=h.indexOf('<section class="card" id="vac-mini-plan">');
+ if(start<0)return h;
+ const end=h.indexOf('</section>',start);
+ if(end<0)return h;
+ const plan=h.slice(start,end+10);
+ const rest=h.slice(0,start)+h.slice(end+10);
+ const dayNavEnd=rest.indexOf('</div>',rest.indexOf('class="days"'));
+ // Insert just after date navigation when possible.
+ return dayNavEnd>=0?rest.slice(0,dayNavEnd+6)+plan+rest.slice(dayNavEnd+6):plan+rest;
+};
+// Bandeau de la journée : vacances plutôt que séance LEGS/PUSH/PULL habituelle.
+const mt725RenderBefore=render;
+render=function(){
+ mt725RenderBefore();
+ if(view!=='today'||openId||date<'2026-10-24'||date>'2026-11-01')return;
+ const hero=document.querySelector('#app .mt534e-home-hero');
+ if(!hero)return;
+ const name=PLAN[date]?.title||'Repos · vacances';
+ const label=hero.querySelector('.mt534f-workout');
+ const detail=hero.querySelector('.mt534f-detail');
+ if(label)label.textContent=PLAN[date]?'VACANCES':'REPOS';
+ if(detail)detail.textContent=name;
+};
+render();
+
 })();
 </script></body></html>
-
-
