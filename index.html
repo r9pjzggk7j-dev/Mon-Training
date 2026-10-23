@@ -1922,4 +1922,21 @@ html body nav#tabs.tabs .mt-nav-label {
   text-overflow:clip!important;
 }
 @media(max-width:355px){html body nav#tabs.tabs > button[data-tab]{font-size:10px!important;gap:4px!important}}
-</style></body></html>
+</style><script id="mt-v723-vacances">
+// Programme vacances facultatif, sans écraser les séances ni les sauvegardes existantes.
+(function(){
+const PLAN={
+'2026-10-24':{title:'Récupération · pompes faciles et gainage',tasks:['Pompes 3 × 15–20, 2 min de repos, loin de l’échec','Planche 3 × 30–40 s','Gainage latéral 2 × 25 s par côté','Bird dog 2 × 10 par côté']},
+'2026-10-25':{title:'Jambes A · reprise douce',tasks:['Échauffement : marche 5 min','Squat à amplitude confortable 3 × 12','Pont fessier 3 × 15','Split squat assisté 2 × 8 par jambe, seulement si indolore','Mollets debout 3 × 20','Chaise 2 × 20–30 s, si indolore']},
+'2026-10-26':{title:'Course / marche n° 1 · test prudent',tasks:['Marche d’échauffement 5 min','Si aucune douleur et reprise des impacts autorisée : 5 × (1 min de footing très facile + 2 min de marche)','Marche retour au calme 5 min','Si douleur, gonflement ou gêne : remplacer par 20–30 min de marche confortable']},
+'2026-10-27':{title:'Pompes · volume et gainage',tasks:['Pompes 35 / 32 / 30 / 27 / 25, repos 2 min ; réduire si fatigue ou douleur','Planche 3 × 40 s','Gainage latéral 2 × 30 s par côté']},
+'2026-10-28':{title:'Jambes B · progression conditionnelle',tasks:['Échauffement : marche 5 min','Squat 3 × 12–15, seulement si dimanche bien toléré','Pont fessier 3 × 15 (ou 2 × 10 unilatéral si facile)','Split squat assisté 2 × 8–10 par jambe, si indolore','Mollets 3 × 20','Chaise 2–3 × 30 s, si indolore']},
+'2026-10-29':{title:'Course / marche n° 2 + pompes',tasks:['Course uniquement si lundi et lendemain sans douleur : 5 × (1 min footing facile + 2 min marche), plus 5 min marche avant/après','Sinon 20–30 min de marche confortable','Pompes 4 séries : 30 / 30 / 25 / 25, repos 2 min ; réduire si fatigue','Pas de test maximal de pompes cette semaine']}
+};
+function card(){const p=PLAN[date];if(!p)return '';const saved=(data.vacationMiniPlan||{})[date]||{};return `<section class="card" id="vac-mini-plan"><h2>Programme vacances · ${date.slice(8)}/10</h2><b>${esc(p.title)}</b><p class="mini">Proposition adaptable, non obligatoire. Coche les étapes réalisées ; elles restent distinctes des activités enregistrées dans ton historique.</p>${p.tasks.map((t,i)=>`<label style="display:flex;gap:10px;align-items:flex-start;margin:10px 0"><input type="checkbox" data-vac-task="${i}" ${saved.checks?.[i]?'checked':''} style="width:20px;flex:none;margin-top:2px"><span>${esc(t)}</span></label>`).join('')}<label>Ressenti / douleur / allure réelle<textarea data-vac-notes rows="3" placeholder="Ex. footing à 6:30/km, genou 0/10…">${esc(saved.notes||'')}</textarea></label><p class="mini">Course : allure de conversation, pas d’objectif à 5 min/km. Les chaussures neuves peuvent améliorer le confort mais ne garantissent pas l’absence de douleur. Arrête les impacts si la douleur revient.</p></section>`}
+const prev=renderToday;
+renderToday=function(){const html=prev();return PLAN[date]?html+card():html};
+document.addEventListener('change',e=>{if(!e.target.matches('[data-vac-task]'))return;const day=date;data.vacationMiniPlan||={};const v=data.vacationMiniPlan[day]||{checks:[],notes:''};v.checks[Number(e.target.dataset.vacTask)]=e.target.checked;data.vacationMiniPlan[day]=v;persist()},true);
+document.addEventListener('input',e=>{if(!e.target.matches('[data-vac-notes]'))return;const day=date;data.vacationMiniPlan||={};const v=data.vacationMiniPlan[day]||{checks:[],notes:''};v.notes=e.target.value;data.vacationMiniPlan[day]=v;persist()},true);
+})();
+</script></body></html>
