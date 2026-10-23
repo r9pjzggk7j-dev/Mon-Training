@@ -1803,6 +1803,77 @@ activeEx=function(id){if(id===openId){const snap=get(id,date).exerciseSnapshot;i
 for(const [id,ex] of Object.entries(data.v7.programs||{}))if(Array.isArray(ex)&&EX[id])EX[id]=ex;
 
 // L'import JSON existant conserve désormais les champs V6, les vacances et les séances ignorées.
+// V7.2.1 — correctif non destructif de l'historique et de l'interface iPhone.
+// Utilise exclusivement les donnees de chaque seance; ne modifie jamais les performances stockees.
+function mt721Rows(rows){
+ if(Array.isArray(rows))return rows;
+ if(rows&&typeof rows==='object')return Object.keys(rows).filter(k=>/^\d+$/.test(k)).sort((a,b)=>Number(a)-Number(b)).map(k=>rows[k]);
+ return [];
+}
+function mt721ExerciseName(id,i,v){
+ const snap=Array.isArray(v.exerciseSnapshot)?v.exerciseSnapshot:null;
+ if(snap?.[i]?.[0])return String(snap[i][0]);
+ const standard=EX[id]?.[i];
+ if(standard?.[0])return String(standard[0]);
+ return 'Exercice '+(i+1)+' (nom non enregistre)';
+}
+formatEntry=function(k,v){
+ const [d,id]=k.split('|');
+ const s=sessions.find(x=>x.id===id);
+ const title=s?.name||id;
+ const status=v.done?'Terminée':'En cours';
+ let details='';
+ if(v.sets){
+  details=Object.keys(v.sets).filter(i=>/^\d+$/.test(i)).sort((a,b)=>Number(a)-Number(b)).map(key=>{
+   const i=Number(key);
+   if(v.hiddenExercises?.[i])return '';
+   const rows=mt721Rows(v.sets[i]).filter(r=>r&&typeof r==='object'&&(String(r.kg??'').trim()!==''||String(r.reps??'').trim()!==''));
+   if(!rows.length)return '';
+   const ex=mt721ExerciseName(id,i,v);
+   const vals=rows.map(r=>{
+    const kg=String(r.kg??'').trim(),reps=String(r.reps??'').trim();
+    const unit=v.exerciseModes?.[i]==='duration'?'s':'rép';
+    return (kg?kg+' kg × ':'')+(reps?reps+' '+unit:'répétitions non renseignées')+(r.rpe!==undefined&&String(r.rpe).trim()!==''?' (RPE '+r.rpe+')':'');
+   });
+   const rest=data.restPrefs?.[id+'|'+i];
+   return ex+' : '+vals.join(', ')+(rest!==undefined?' ; repos choisi '+rest+' s':'');
+  }).filter(Boolean).join(' ; ');
+  if(!details)details='Aucune serie exploitable enregistree';
+ }else if(v.push){details='Pompes : '+v.push.join('/');}
+ else if(id.toLowerCase().includes('bike')){
+  details='BikeErg : '+(v.minutes||'?')+' min, '+(v.watts||'?')+' W, '+(v.distance||'?')+' m, '+(v.rpm||'?')+' RPM, RPE '+(v.effort||'?')+'/10';
+ }else if(v.activityMinutes||v.activityDistance){
+  details='Activite : '+(v.activityMinutes||'?')+' min, distance '+(v.activityDistance||'?');
+ }else{details='Activites cochees : '+(v.checks?.filter(Boolean).length||0);}
+ const val=x=>x===undefined||x===null||x===''?'?':x;
+ return d+' — '+title+' ['+status+']\n'+details+'\nRPE séance '+val(v.sessionRpe)+' ; fatigue '+val(v.fatigue)+' ; douleur genou '+val(v.knee)+' ; douleur bras '+val(v.arm)+' ; notes : '+(v.notes||'aucune');
+};
+// Corrige le cartouche affiche sur une seance terminee et saute les exercices retires.
+const mt721EnhanceSessionBefore=enhanceSession;
+enhanceSession=function(){
+ mt721EnhanceSessionBefore();
+ const v=get(openId,date);
+ const box=document.querySelector('#v6-current-exercise');
+ if(!box)return;
+ const card=box.closest('.card');
+ const heading=card?.querySelector('b');
+ if(heading)heading.textContent=v.done?'Séance terminée':'Séance en cours';
+ const visible=[...document.querySelectorAll('#app .exercise')].filter(el=>{
+  if(el.style.display==='none'||el.hidden)return false;
+  return getComputedStyle(el).display!=='none';
+ });
+ if(!visible.length){box.textContent=v.done?'Séance enregistrée.':'Aucun exercice actif.';return;}
+ const pending=visible.filter(el=>!el.textContent.includes('Exercice terminé'));
+ const current=(pending[0]||visible[0]);
+ const pos=visible.indexOf(current);
+ const label=el=>el?.querySelector('b')?.textContent?.trim()||'';
+ box.textContent=v.done?'Séance enregistrée · '+visible.length+' exercice(s) affiché(s).':
+  'Exercice actuel : '+label(current)+' · Suivant : '+(label(visible[pos+1])||'Fin de séance');
+};
+// Affiche une version claire sans changer le stockage local existant.
+const mt721HeaderBefore=header;
+header=function(){return mt721HeaderBefore().replace(/V7\.2 TEST/g,'V7.2.1')};
+
 const v6Header=header;header=function(){return v6Header().replace(/V5\.3\.[0-9a-z.]+(?: TEST)?/gi,'V7.2 TEST')};
 render();
 })();
