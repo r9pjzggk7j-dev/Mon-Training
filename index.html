@@ -120,7 +120,7 @@ if(!data.entries[mondayKey]){
 let view='today',date=todayISO(),openId=null;function persist(){try{localStorage.setItem(KEY,JSON.stringify(data));return true}catch(e){alert('Stockage indisponible : exporte tes données depuis Données.');return false}}const eid=(s,d)=>d+'|'+s;function get(s,d){return data.entries[eid(s,d)]||{}}function set(s,d,patch){data.entries[eid(s,d)]={...get(s,d),...patch};persist()}function all(d){const moved=data.schedule?.[d];return moved?moved.map(id=>sessions.find(s=>s.id===id)).filter(Boolean):sessions.filter(s=>s.day===idx(d))}function header(){return `<div class="hero"><small>MON TRAINING V5.3.3.8 • STOCKAGE LOCAL</small><h1>${view==='today'?'Ta séance du jour':view==='week'?'Planning hebdomadaire':view==='progress'?'Ta progression':view==='lexicon'?'Lexique des exercices':'Sauvegardes & réglages'}</h1><span class="mini">Objectif : physique athlétique • 100 pompes • genou renforcé</span></div>`}function status(s,d){return get(s.id,d).done?' <span class="ok">✓ Terminée</span>':''}function dayButtons(){let m=isoOf(monday(date));return `<div class="days">${DAYS.map((_,i)=>`<button class="${date===plus(m,i)?'active':''}" data-date="${plus(m,i)}">${short[i]}<br>${plus(m,i).slice(8)}</button>`).join('')}</div>`}function renderToday(){return `<div class="row"><button data-shift="-7">‹ Sem.</button><b>${esc(new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'}))}</b><button data-shift="7">Sem. ›</button></div>${dayButtons()}<h2>${DAYS[idx(date)]}</h2>${all(date).map(s=>`<button class="card row" style="width:100%;text-align:left" data-open="${s.id}"><span><b>${esc(s.name)}</b><br><small>${s.optional?'Facultatif · ':''}${s.kind==='strength'?'Charges, répétitions, RPE':s.kind==='pushups'?'Séries et récupération':s.kind==='bike'?'20 minutes':s.kind==='knee'?'Stabilité et renforcement':'Suivi de séance'}</small></span><span>${status(s,date)||'›'}</span></button>`).join('')||'<p>Repos.</p>'}<div class="notice">Douleur persistante au genou ou au bras : réduis la charge et fais évaluer les symptômes. Le WOD remplace une séance, il ne s’ajoute pas à une semaine déjà fatigante.</div>`}function renderWeek(){const m=isoOf(monday(date));return `<div class="row"><button data-shift="-7">‹</button><b>Semaine du ${m.split('-').reverse().join('/')}</b><button data-shift="7">›</button></div>${DAYS.map((n,i)=>{const d=plus(m,i),list=all(d);return `<div class="card"><div class="row"><b>${n} ${d.slice(8)}</b><button data-date="${d}">Ouvrir</button></div>${list.map(s=>`<div class="mini" style="padding:5px 0">${get(s.id,d).done?'✓ ':'○ '}${esc(s.name)}</div>`).join('')}</div>`}).join('')}`}
 function currentEx(id,i){const base=EX[id]?.[i];if(!base)return null;const override=data.programOverrides?.[id+'|'+i];return override? [override.name||base[0],override.description||base[1],Number(override.sets)||base[2],override.kg??base[3],Number(override.reps)||base[4],Number(override.rest??base[5])]:base}
 function activeEx(id){return (EX[id]||[]).map((_,i)=>currentEx(id,i)).filter(Boolean)}
-function formInput(label,key,val,type='number',extra=''){return `<label>${label}<input data-field="${key}" type="${type}" ${type==='number'?'step="any"':''} value="${esc(val??'')}" ${extra}></label>`}function renderSession(){const s=sessions.find(x=>x.id===openId),v=get(s.id,date);let html=`<button data-back="1">← Retour</button><div class="card"><h2>${esc(s.name)}</h2><small>${date} · ${s.optional?'Facultatif':'Prévu'}</small>`;if(s.kind==='strength'){html+=`<p class="mini">Note chaque série réellement effectuée. Les charges proposées sont indicatives et doivent rester sans douleur.</p>`;activeEx(s.id).forEach((ex,i)=>{let sets=v.sets?.[i]||[];html+=`<div class="exercise"><div class="row"><b>${esc(ex[0])}</b><button data-timer="${data.restPrefs[s.id+'|'+i]??(date==='2026-10-12'&&s.id==='push'&&i===0?120:ex[5])}">⏱ Démarrer</button></div><p class="mini">${esc(ex[1])}</p><div class="row"><small>Repos conseillé : ${ex[5]} s</small><label style="width:130px">Mon repos (s)<input type="number" min="0" max="1200" step="15" data-restpref="${s.id}|${i}" value="${data.restPrefs[s.id+'|'+i]??(date==='2026-10-12'&&s.id==='push'&&i===0?120:ex[5])}"></label></div>${v.finishedExercises?.[i]?'<p class="ok">✓ Exercice terminé · Réouvrir pour modifier</p>':Array.from({length:ex[2]+(v.extraSets?.[i]||0)},(_,j)=>{let a=sets[j]||{};return `<div class="setgrid">${formInput('Série '+(j+1)+' · kg',`sets.${i}.${j}.kg`,a.kg??(j<ex[2]?ex[3]:''))}${formInput('Répétitions',`sets.${i}.${j}.reps`,a.reps??(j<ex[2]?ex[4]:''))}${formInput('RPE',`sets.${i}.${j}.rpe`,a.rpe??'')}</div>`}).join('')}<div class="actions"><button data-addset="${i}">＋ Ajouter une série</button><button data-finishex="${i}">${v.finishedExercises?.[i]?'↶ Réouvrir':'✓ Fait'}</button></div></div>`})}else if(s.kind==='pushups'){const plan=pushPlan(s.id,date);html+=`<p class="mini">Cible : ${plan.join(' / ')} · 2 min de repos. N'augmente que si les séries restent propres et bien tolérées.</p>`+plan.map((n,i)=>`<div class="row card"><b>Série ${i+1} · cible ${n}</b><div style="width:100px">${formInput('Réalisées',`push.${i}`,v.push?.[i]??n)}</div><button data-timer="120">⏱</button></div>`).join('')}else if(s.kind==='bike'){html+=`<p class="mini">${s.id==='bike1'?'Endurance facile, RPE 3–4/10':s.id==='bike2'?'Endurance facile les 2 premières semaines, puis 5 min faciles + 5 × (1 min soutenue / 1 min facile) + 5 min faciles si genou OK':'Endurance régulière RPE 4–5/10'}</p><div class="grid">${formInput('Durée (min)','minutes',v.minutes??20)}${formInput('Distance (m)','distance',v.distance)}${formInput('Watts moyens','watts',v.watts)}${formInput('Cadence moyenne (RPM)','rpm',v.rpm)}${formInput('RPE /10','effort',v.effort)}</div>`}else{const list=s.kind==='mobility'?MOB:s.kind==='knee'?[['Split squat assisté','2 × 8/jambe'],['Équilibre sur coussin','2 × 30 s/jambe'],['Isométrie quadriceps','3 × 30 s']]:[['BikeErg','10 calories'],['Rowing TRX','8 répétitions'],['Pompes','8 répétitions'],['Squat banc haut (si toléré)','8 répétitions'],['Dead bug','10 alternées']];html+=s.kind==='wod'?formInput('Tours réalisés','rounds',v.rounds):'';html+=list.map((x,i)=>`<label class="card" style="display:flex;align-items:center;gap:12px"><input type="checkbox" data-check="${i}" ${v.checks?.[i]?'checked':''} style="width:22px;min-height:22px;margin:0"><span><b>${esc(x[0])}</b><br><small>${esc(x[1])}</small></span></label>`).join('')}
+function formInput(label,key,val,type='number',extra=''){return `<label>${label}<input data-field="${key}" type="${type}" ${type==='number'?'step="any"':''} value="${esc(val??'')}" ${extra}></label>`}function renderSession(){const s=sessions.find(x=>x.id===openId),v=get(s.id,date);let html=`<button data-back="1">← Retour</button><div class="card"><h2>${esc(s.name)}</h2><small>${date} · ${s.optional?'Facultatif':'Prévu'}</small>`;if(s.kind==='strength'){html+=`<p class="mini">Note chaque série réellement effectuée. Les charges proposées sont indicatives et doivent rester sans douleur.</p>`;activeEx(s.id).forEach((ex,i)=>{let sets=v.sets?.[i]||[];html+=`<div class="exercise"><div class="row"><b>${esc(ex[0])}</b><button data-timer="${data.restPrefs[s.id+'|'+i]??(date==='2026-10-12'&&s.id==='push'&&i===0?120:ex[5])}">⏱ Démarrer</button></div><p class="mini">${esc(ex[1])}</p><div class="row"><small>Repos conseillé : ${ex[5]} s</small><label style="width:130px">Mon repos (s)<input type="number" min="0" max="1200" step="15" data-restpref="${s.id}|${i}" value="${data.restPrefs[s.id+'|'+i]??(date==='2026-10-12'&&s.id==='push'&&i===0?120:ex[5])}"></label></div>${v.finishedExercises?.[i]?'<p class="ok">✓ Exercice terminé · Réouvrir pour modifier</p>':Array.from({length:ex[2]+(v.extraSets?.[i]||0)},(_,j)=>{let a=sets[j]||{};return `<div class="setgrid">${formInput('Série '+(j+1)+' · kg',`sets.${i}.${j}.kg`,a.kg??(j<ex[2]?ex[3]:''))}${formInput('Répétitions',`sets.${i}.${j}.reps`,a.reps??(j<ex[2]?ex[4]:''))}${formInput('RPE',`sets.${i}.${j}.rpe`,a.rpe??'')}</div>`}).join('')}<div class="actions"><button data-addset="${i}">＋ Ajouter une série</button><button data-finishex="${i}">${v.finishedExercises?.[i]?'↶ Réouvrir':'✓ Fait'}</button></div></div>`})}else if(s.kind==='pushups'){const plan=pushPlan(s.id,date);html+=`<p class="mini">Cible : ${plan.join(' / ')} · 2 min de repos. N'augmente que si les séries restent propres et bien tolérées.</p>`+Array.from({length:Math.max(plan.length,v.push?.length||0)},(_,i)=>`<div class="row card"><b>Série ${i+1} · cible ${plan[i]??'libre'}</b><div style="width:100px">${formInput('Réalisées',`push.${i}`,v.push?.[i]??plan[i]??'')}</div><button data-timer="120">⏱</button></div>`).join('')+`<button type="button" data-v73-add-push="1">＋ Ajouter une série de pompes</button>`}else if(s.kind==='bike'){html+=`<p class="mini">${s.id==='bike1'?'Endurance facile, RPE 3–4/10':s.id==='bike2'?'Endurance facile les 2 premières semaines, puis 5 min faciles + 5 × (1 min soutenue / 1 min facile) + 5 min faciles si genou OK':'Endurance régulière RPE 4–5/10'}</p><div class="grid">${formInput('Durée (min)','minutes',v.minutes??20)}${formInput('Distance (m)','distance',v.distance)}${formInput('Watts moyens','watts',v.watts)}${formInput('Cadence moyenne (RPM)','rpm',v.rpm)}${formInput('RPE /10','effort',v.effort)}</div>`}else{const list=s.kind==='mobility'?MOB:s.kind==='knee'?[['Split squat assisté','2 × 8/jambe'],['Équilibre sur coussin','2 × 30 s/jambe'],['Isométrie quadriceps','3 × 30 s']]:[['BikeErg','10 calories'],['Rowing TRX','8 répétitions'],['Pompes','8 répétitions'],['Squat banc haut (si toléré)','8 répétitions'],['Dead bug','10 alternées']];html+=s.kind==='wod'?formInput('Tours réalisés','rounds',v.rounds):'';html+=list.map((x,i)=>`<label class="card" style="display:flex;align-items:center;gap:12px"><input type="checkbox" data-check="${i}" ${v.checks?.[i]?'checked':''} style="width:22px;min-height:22px;margin:0"><span><b>${esc(x[0])}</b><br><small>${esc(x[1])}</small></span></label>`).join('')}
 html+=`<div class="grid">${formInput('Douleur genou /10','knee',v.knee)}${formInput('Douleur bras /10','arm',v.arm)}${formInput('Fatigue /10','fatigue',v.fatigue)}${formInput('RPE séance /10','sessionRpe',v.sessionRpe)}</div><label>Notes / sensations<textarea data-field="notes">${esc(v.notes||'')}</textarea></label><button class="primary" style="width:100%;margin-top:12px" data-save="1">${v.done?'Mettre à jour la séance terminée':'✓ Terminer la séance'}</button><button style="width:100%;margin-top:8px" data-unfinish="1">Marquer comme non terminée</button></div>`;return html}
 function trend(values,title,suffix=''){if(!values.length)return `<div class="card"><b>${title}</b><p class="muted">Aucune donnée pour le moment.</p></div>`;let nums=values.map(x=>x.v),min=Math.min(...nums),max=Math.max(...nums);if(max===min){max+=1;min-=1}const points=values.map((x,i)=>`${22+i*290/Math.max(1,values.length-1)},${120-(x.v-min)/(max-min)*95}`).join(' ');return `<div class="card"><b>${title}</b><svg viewBox="0 0 335 145" aria-label="Progression ${title}"><line x1="22" y1="120" x2="320" y2="120" stroke="#666971"/><polyline points="${points}" stroke="#3288F5" stroke-width="3" fill="none"/>${values.map((x,i)=>`<circle cx="${22+i*290/Math.max(1,values.length-1)}" cy="${120-(x.v-min)/(max-min)*95}" r="4" fill="#3288F5"/>`).join('')}</svg><small>Début : ${nums[0]}${suffix} · Dernier : ${nums.at(-1)}${suffix}</small></div>`}
 function renderProgress(){let items=Object.entries(data.entries).filter(([k,v])=>v.done).sort((a,b)=>a[0].localeCompare(b[0]));let bench=[],bike=[],rpm=[],push=[];items.forEach(([k,v])=>{let [d,id]=k.split('|');if(id==='push'&&v.sets?.[0]?.[0]){let a=v.sets[0][0];if(+a.kg>0&&+a.reps>0)bench.push({d,v:+a.kg*+a.reps})}if(id.startsWith('bike')&&+v.watts>0)bike.push({d,v:+v.watts});if(id.startsWith('bike')&&+v.rpm>0)rpm.push({d,v:+v.rpm});if(id==='pompesA'&&v.push)push.push({d,v:v.push.reduce((a,b)=>a+(+b||0),0)})});return safeSuggestions()+`<div class="grid"><div class="card"><h2>${items.length}</h2><small>Séances enregistrées</small></div><div class="card"><h2>65</h2><small>Record pompes initial</small></div></div>${trend(bench,'Développé couché · volume première série',' kg·reps')}${trend(push,'Pompes A · volume total',' reps')}${trend(bike,'BikeErg · watts moyens',' W')}${trend(rpm,'BikeErg · cadence moyenne',' RPM')}<h2>Historique</h2>${items.slice(-25).reverse().map(([k,v])=>`<button class="card row" style="width:100%;text-align:left" data-history="${esc(k)}"><span><b>${esc(sessions.find(s=>s.id===k.split('|')[1])?.name||k)}</b><br><small>${k.split('|')[0]} · fatigue ${esc(v.fatigue||'–')}/10 · genou ${esc(v.knee||'–')}/10</small></span><span>›</span></button>`).join('')||'<p class="muted">Aucune séance enregistrée.</p>'}<div class="card"><b>Référence du 12 octobre</b><p class="mini">Développé couché : 70 kg × 8/8/8/8, RPE 7 sur la dernière série. Record de pompes : 65.</p></div>`}
@@ -1319,7 +1319,7 @@ render=function(){
  app.querySelectorAll('.hero > small').forEach(el=>el.remove());
  if(view==='settings'&&!openId){
    const v=document.createElement('p');v.className='mt534h-version';
-   v.textContent='Mon Training V7.2 TEST · Stockage local';
+   v.textContent='Mon Training V7.3 · Stockage local';
    app.appendChild(v);
  }
 };
@@ -1799,81 +1799,101 @@ document.addEventListener('click',e=>{
 const v71ActiveExBefore=activeEx;
 activeEx=function(id){if(id===openId){const snap=get(id,date).exerciseSnapshot;if(Array.isArray(snap)&&snap.length)return snap}return v71ActiveExBefore(id)};
 
+
+// V7.3 : seconde extension triceps, ajoutée uniquement aux nouvelles séances.
+const V73_TRICEPS=['Extension triceps à la poulie au-dessus de la tête','3 × 10–15 · 35 kg indicatifs',3,35,12,75];
+if(Array.isArray(EX.push39)&&!EX.push39.some(x=>/triceps.*(dessus|tête)/i.test(x[0])))EX.push39.push(V73_TRICEPS);
+if(Array.isArray(EX.push)&&!EX.push.some(x=>/triceps.*(dessus|tête)/i.test(x[0])))EX.push.push(V73_TRICEPS);
+if(Array.isArray(V71_CATALOG.Triceps)&&!V71_CATALOG.Triceps.includes(V73_TRICEPS[0]))V71_CATALOG.Triceps.unshift(V73_TRICEPS[0]);
+// Le catalogue V7.1 enregistrait un instantané, mais la vue de certains exercices
+// reposait sur les tableaux du programme. Ne jamais écrire dans les séances passées.
+const v73ActiveExBefore=activeEx;
+activeEx=function(id){const v=get(id,date);if(id===openId&&Array.isArray(v.exerciseSnapshot)&&v.exerciseSnapshot.length)return v.exerciseSnapshot;return v73ActiveExBefore(id)};
+// Une modification de séance est toujours enregistrée avec son propre instantané.
+function v73AddExercise(name){
+ if(!openId||!name?.trim())return;
+ saveDraft();const v=get(openId,date),list=structuredClone(v.exerciseSnapshot?.length?v.exerciseSnapshot:activeEx(openId));
+ list.push([name.trim(),'Exercice ajouté',3,'',12,90]);
+ set(openId,date,{exerciseSnapshot:list});render();
+}
+// On remplace le bouton d'ajout V7.1 par un bouton V7.3 qui utilise l'instantané.
+const v73RenderSessionBefore=renderSession;
+renderSession=function(){let h=v73RenderSessionBefore();if(openId&&h.includes('data-v71-add-ex'))h=h.replace('data-v71-add-ex="1"','data-v73-add-ex="1"');return h};
+// Les changements de série sont capturés avant le réaffichage.
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.hasAttribute('data-v73-add-ex')){e.preventDefault();e.stopImmediatePropagation();const sel=document.querySelector('#v71-exercise-catalog');let name=sel?.value;if(name==='__custom__')name=prompt('Nom du nouvel exercice :');v73AddExercise(name);return}
+ if(b.hasAttribute('data-v73-add-push')){e.preventDefault();e.stopImmediatePropagation();if(!openId)return;saveDraft();const v=get(openId,date);v.push ||= [];v.push.push('');set(openId,date,{push:v.push});render();return}
+},true);
+// Sauvegarder une fiche d'instruction terminée dans entries, avec détail et durée.
+// La synthèse journalière ci-dessous déduplique les séances de cette journée.
+const v73OldInstructionSave=saveInstruction;
+saveInstruction=function(j){v73OldInstructionSave(j)};
+function v73SpecialDays(){const result=new Map();
+ for(const [day,v] of Object.entries(data.vacationMiniPlan||{})){
+  const checks=Array.isArray(v?.checks)?v.checks:[];if(!checks.some(Boolean))continue;
+  result.set(day,{kind:'vacances',count:checks.filter(Boolean).length,total:checks.length,notes:v.notes||'',source:'vacationMiniPlan'});
+ }
+ for(const [key,v] of Object.entries(data.entries||{})){
+  if(!v?.done||!key.includes('|instructionV6_'))continue;
+  const day=key.slice(0,10),old=result.get(day);if(!old||old.kind!=='instruction')result.set(day,{kind:'instruction',count:0,total:0,notes:'',source:'entries'});
+  const x=result.get(day);x.count++;x.total++;x.notes+=(x.notes?' · ':'')+(v.notes||'Séance instruction');
+ }
+ return result;
+}
+function v73ProgressRows(){return Object.entries(data.entries||{}).filter(([k,v])=>v?.done)}
+function v73MonthStats(month){
+ const rows=v73ProgressRows().filter(([k])=>k.startsWith(month));
+ const special=[...v73SpecialDays()].filter(([d])=>d.startsWith(month));
+ const recordedDays=new Set(rows.map(([k])=>k.slice(0,10)));
+ // Une journée spéciale est une seule activité si aucune séance classique n'y figure.
+ const added=special.filter(([d])=>!recordedDays.has(d));
+ const bikes=rows.filter(([k])=>/bike/i.test(k.split('|')[1]));
+ const isMuscle=id=>/^(push|pull|upper|legs)(39)?$/.test(id);
+ const muscle=rows.filter(([k])=>isMuscle(k.split('|')[1]));
+ const runs=rows.filter(([k])=>/run|course/i.test(k.split('|')[1]));
+ const pompes=rows.filter(([k,v])=>Array.isArray(v.push));
+ return {rows,special,added,activities:rows.length+added.length,days:new Set([...recordedDays,...special.map(([d])=>d)]).size,bikeMinutes:bikes.reduce((a,[,v])=>a+(+v.minutes||0),0),bikeCalories:bikes.reduce((a,[,v])=>a+(+v.calories||0),0),bikeDistance:bikes.reduce((a,[,v])=>a+(+v.distance||0),0),muscle:muscle.length,runs:runs.length,runKm:runs.reduce((a,[,v])=>a+(+v.activityDistance||0),0),pompes:pompes.reduce((a,[k,v])=>a+v.push.reduce((b,n)=>b+(+n||0),0)+(k==='2026-10-27|push39a'&&v.notes?.includes('25 rep')&&v.push.length===4?25:0),0)};
+}
+function v73MonthLabel(m){return new Date(m+'-01T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}
+function v73Progress(){
+ data.v7||={};const today=todayISO(),current=today.slice(0,7),month=data.v7.calendarMonth||current,st=v73MonthStats(month);
+ const card=(v,label)=>`<div class="card v73-stat"><h2>${esc6(String(v))}</h2><small>${esc6(label)}</small></div>`;
+ const monthRows=st.rows,attempts=[];
+ for(const def of defs)for(const a of data.challengesV6?.[def[0]]?.attempts||[])if(a.date)attempts.push({date:a.date,name:def[1],value:a.value});
+ for(const c of data.challengesV6?.custom||[])for(const a of c.attempts||[])if(a.date)attempts.push({date:a.date,name:c.name,value:a.value});
+ const first=new Date(month+'-01T12:00:00'),offset=(first.getDay()+6)%7,count=new Date(+month.slice(0,4),+month.slice(5),0).getDate();
+ const special=v73SpecialDays();
+ const days=Array.from({length:offset},()=>'<span></span>').concat(Array.from({length:count},(_,i)=>{
+  const day=month+'-'+String(i+1).padStart(2,'0');const done=monthRows.filter(([k])=>k.startsWith(day)).length;
+  const sp=special.get(day),n=done+(sp&&!done?1:0)+attempts.filter(a=>a.date===day).length;
+  return `<button type="button" data-v7-day="${day}" class="v7-day ${n?'v7-active':''} ${day===(data.v7.selectedDay||today)?'v72-selected':''}"><span class="v72-date">${i+1}</span><span class="v72-count">${n?n+' activité'+(n>1?'s':''):'—'}</span></button>`;
+ }));
+ const selected=data.v7.selectedDay?.startsWith(month)?data.v7.selectedDay:(month===current?today:month+'-01');
+ const history=monthRows.filter(([k])=>k.startsWith(selected));const sp=special.get(selected);
+ const selectedHtml=history.map(([k,v])=>`<button class="card row" data-history="${esc6(k)}">${esc6(sessions.find(s=>s.id===k.split('|')[1])?.name||v.activityName||k.split('|')[1])} ›</button>`).join('')+
+ (sp?`<div class="card"><b>Entraînement ${esc6(sp.kind)} — ${sp.count}/${sp.total} exercices cochés</b><p class="mini">${esc6(sp.notes||'Sans commentaire')}</p>${history.length?'<small>Journée déjà comptabilisée par les séances enregistrées : aucun doublon.</small>':''}</div>`:'')+
+ attempts.filter(a=>a.date===selected).map(a=>`<p class="mini">Défi : ${esc6(a.name)} — ${esc6(String(a.value))}</p>`).join('');
+ const all=v73ProgressRows(),allDays=new Set([...all.map(([k])=>k.slice(0,10)),...special.keys()]);
+ return `<div class="card"><div class="row"><button data-v7-month="-1">‹</button><h2 style="margin:0;text-transform:capitalize">${esc6(v73MonthLabel(month))}</h2><button data-v7-month="1">›</button></div><button data-v73-today="1">Aujourd'hui</button><p class="mini">Le calendrier et le bilan concernent le même mois.</p></div>`+
+ `<h2>Vue d'ensemble mensuelle</h2><div class="grid">${card(st.activities,'Activités du mois')}${card(st.days,'Jours actifs')}${card(st.muscle,'Séances de musculation')}${card(st.bikeMinutes+' min','BikeErg · durée')}${card(Math.round(st.bikeCalories)+' kcal','BikeErg · calories')}${card(st.bikeDistance+' m','BikeErg · distance')}${card(st.pompes,'Pompes · répétitions')}${card(st.runKm.toFixed(2)+' km','Course à pied')}</div>`+
+ `<div class="card"><h3>Calendrier des activités</h3><div class="v7-calendar v72-calendar">${['L','M','M','J','V','S','D'].map(x=>'<b>'+x+'</b>').join('')}${days.join('')}</div><p class="mini">Les journées Vacances et Instruction sont intégrées sans compter deux fois les séances déjà enregistrées.</p><h3>${esc6(selected.split('-').reverse().join('/'))}</h3>${selectedHtml||'<p class="mini">Aucune activité enregistrée ce jour.</p>'}</div>`+
+ `<div class="card"><h3>Bilan global · Depuis le début</h3><div class="grid">${card(all.length+[...special.keys()].filter(d=>!all.some(([k])=>k.startsWith(d))).length,'Activités comptabilisées')}${card(allDays.size,'Jours actifs')}</div></div>`;
+}
+// Remplace l'ancien calcul de la vue Progrès : il mélangeait mois courant et mois affiché.
+renderProgress=v73Progress;
+const v73RenderBefore=render;
+render=function(){v73RenderBefore()};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-v73-today]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();data.v7||={};data.v7.calendarMonth=todayISO().slice(0,7);data.v7.selectedDay=todayISO();persist();render()},true);
+// Le mois revient à aujourd'hui lors de la première ouverture de Progrès par navigation.
+document.addEventListener('click',e=>{const b=e.target.closest('[data-tab="progress"]');if(!b)return;data.v7||={};data.v7.calendarMonth=todayISO().slice(0,7);data.v7.selectedDay=todayISO();persist()},true);
+// Décompte mensuel des journées spéciales même si le plan ne comporte que des cases cochées.
+
 // Programme personnel restauré uniquement si explicitement enregistré auparavant.
 for(const [id,ex] of Object.entries(data.v7.programs||{}))if(Array.isArray(ex)&&EX[id])EX[id]=ex;
+if(Array.isArray(EX.push39)&&!EX.push39.some(x=>/triceps.*(dessus|tête)/i.test(x[0])))EX.push39.push(V73_TRICEPS);
 
 // L'import JSON existant conserve désormais les champs V6, les vacances et les séances ignorées.
-// V7.2.1 — correctif non destructif de l'historique et de l'interface iPhone.
-// Utilise exclusivement les donnees de chaque seance; ne modifie jamais les performances stockees.
-function mt721Rows(rows){
- if(Array.isArray(rows))return rows;
- if(rows&&typeof rows==='object')return Object.keys(rows).filter(k=>/^\d+$/.test(k)).sort((a,b)=>Number(a)-Number(b)).map(k=>rows[k]);
- return [];
-}
-function mt721ExerciseName(id,i,v){
- const snap=Array.isArray(v.exerciseSnapshot)?v.exerciseSnapshot:null;
- if(snap?.[i]?.[0])return String(snap[i][0]);
- const standard=EX[id]?.[i];
- if(standard?.[0])return String(standard[0]);
- return 'Exercice '+(i+1)+' (nom non enregistre)';
-}
-formatEntry=function(k,v){
- const [d,id]=k.split('|');
- const s=sessions.find(x=>x.id===id);
- const title=s?.name||id;
- const status=v.done?'Terminée':'En cours';
- let details='';
- if(v.sets){
-  details=Object.keys(v.sets).filter(i=>/^\d+$/.test(i)).sort((a,b)=>Number(a)-Number(b)).map(key=>{
-   const i=Number(key);
-   if(v.hiddenExercises?.[i])return '';
-   const rows=mt721Rows(v.sets[i]).filter(r=>r&&typeof r==='object'&&(String(r.kg??'').trim()!==''||String(r.reps??'').trim()!==''));
-   if(!rows.length)return '';
-   const ex=mt721ExerciseName(id,i,v);
-   const vals=rows.map(r=>{
-    const kg=String(r.kg??'').trim(),reps=String(r.reps??'').trim();
-    const unit=v.exerciseModes?.[i]==='duration'?'s':'rép';
-    return (kg?kg+' kg × ':'')+(reps?reps+' '+unit:'répétitions non renseignées')+(r.rpe!==undefined&&String(r.rpe).trim()!==''?' (RPE '+r.rpe+')':'');
-   });
-   const rest=data.restPrefs?.[id+'|'+i];
-   return ex+' : '+vals.join(', ')+(rest!==undefined?' ; repos choisi '+rest+' s':'');
-  }).filter(Boolean).join(' ; ');
-  if(!details)details='Aucune serie exploitable enregistree';
- }else if(v.push){details='Pompes : '+v.push.join('/');}
- else if(id.toLowerCase().includes('bike')){
-  details='BikeErg : '+(v.minutes||'?')+' min, '+(v.watts||'?')+' W, '+(v.distance||'?')+' m, '+(v.rpm||'?')+' RPM, RPE '+(v.effort||'?')+'/10';
- }else if(v.activityMinutes||v.activityDistance){
-  details='Activite : '+(v.activityMinutes||'?')+' min, distance '+(v.activityDistance||'?');
- }else{details='Activites cochees : '+(v.checks?.filter(Boolean).length||0);}
- const val=x=>x===undefined||x===null||x===''?'?':x;
- return d+' — '+title+' ['+status+']\n'+details+'\nRPE séance '+val(v.sessionRpe)+' ; fatigue '+val(v.fatigue)+' ; douleur genou '+val(v.knee)+' ; douleur bras '+val(v.arm)+' ; notes : '+(v.notes||'aucune');
-};
-// Corrige le cartouche affiche sur une seance terminee et saute les exercices retires.
-const mt721EnhanceSessionBefore=enhanceSession;
-enhanceSession=function(){
- mt721EnhanceSessionBefore();
- const v=get(openId,date);
- const box=document.querySelector('#v6-current-exercise');
- if(!box)return;
- const card=box.closest('.card');
- const heading=card?.querySelector('b');
- if(heading)heading.textContent=v.done?'Séance terminée':'Séance en cours';
- const visible=[...document.querySelectorAll('#app .exercise')].filter(el=>{
-  if(el.style.display==='none'||el.hidden)return false;
-  return getComputedStyle(el).display!=='none';
- });
- if(!visible.length){box.textContent=v.done?'Séance enregistrée.':'Aucun exercice actif.';return;}
- const pending=visible.filter(el=>!el.textContent.includes('Exercice terminé'));
- const current=(pending[0]||visible[0]);
- const pos=visible.indexOf(current);
- const label=el=>el?.querySelector('b')?.textContent?.trim()||'';
- box.textContent=v.done?'Séance enregistrée · '+visible.length+' exercice(s) affiché(s).':
-  'Exercice actuel : '+label(current)+' · Suivant : '+(label(visible[pos+1])||'Fin de séance');
-};
-// Affiche une version claire sans changer le stockage local existant.
-const mt721HeaderBefore=header;
-header=function(){return mt721HeaderBefore().replace(/V7\.2 TEST/g,'V7.2.1')};
-
 const v6Header=header;header=function(){return v6Header().replace(/V5\.3\.[0-9a-z.]+(?: TEST)?/gi,'V7.2 TEST')};
 render();
 })();
@@ -1922,61 +1942,4 @@ html body nav#tabs.tabs .mt-nav-label {
   text-overflow:clip!important;
 }
 @media(max-width:355px){html body nav#tabs.tabs > button[data-tab]{font-size:10px!important;gap:4px!important}}
-</style><script id="mt-v725-vacances">
-// Programme vacances facultatif, sans écraser les séances ni les sauvegardes existantes.
-(function(){
-const PLAN={
-'2026-10-24':{title:'Récupération · pompes faciles et gainage',tasks:['Pompes 3 × 15–20, 2 min de repos, loin de l’échec','Planche 3 × 60 s, repos 45–60 s','Gainage latéral 3 × 45 s par côté, repos 30–45 s','Bird dog 2 × 10 par côté']},
-'2026-10-25':{title:'Jambes A · reprise douce',tasks:['Échauffement : marche 5 min','Squat à amplitude confortable 3 × 12','Pont fessier 3 × 15','Split squat assisté 2 × 8 par jambe, seulement si indolore','Mollets debout 3 × 20','Chaise 2 × 20–30 s, si indolore']},
-'2026-10-26':{title:'Course / marche n° 1 · reprise à allure douce',tasks:['Marche d’échauffement 5 min','Si marche et échauffement indolores et reprise des impacts autorisée : 4 × (3 min de footing très facile + 2 min de marche), sur terrain plat','Rester à une allure confortable (environ 6 min/km ou plus lent, sans chercher à tenir un chrono)','Marche retour au calme 5 min','Si douleur à l’impact, arrêter la course ; remplacer par de la marche si indolore. Vérifier le genou le soir et le lendemain']},
-'2026-10-27':{title:'Pompes · volume et gainage',tasks:['Pompes 35 / 32 / 30 / 27 / 25, repos 2 min ; réduire si fatigue ou douleur','Planche 3 × 60 s, repos 45–60 s','Gainage latéral 3 × 45 s par côté, repos 30–45 s']},
-'2026-10-28':{title:'Jambes B · progression conditionnelle',tasks:['Échauffement : marche 5 min','Squat 3 × 12–15, seulement si dimanche bien toléré','Pont fessier 3 × 15 (ou 2 × 10 unilatéral si facile)','Split squat assisté 2 × 8–10 par jambe, si indolore','Mollets 3 × 20','Chaise 2–3 × 30 s, si indolore']},
-'2026-10-29':{title:'Repos · retour de vacances',tasks:['Repos : trajet de retour, aucune séance prévue','Marche et mobilité douce facultatives, uniquement selon l’envie']},
-'2026-10-30':{title:'Repos · journée à Walibi',tasks:['Repos : journée au parc, aucune séance prévue','Marche au parc suffisante ; pas de séance supplémentaire imposée']},
-'2026-10-31':{title:'Course / marche n° 2 · samedi soir',tasks:['Séance le soir uniquement, si disponible et si lundi + lendemain ont été sans douleur','Marche d’échauffement 5 min','4 × (3 min de footing très facile + 2 min de marche), terrain plat ; ne pas accélérer','Marche retour au calme 5 min','Si douleur, gonflement ou fatigue importante après le parc : marche douce ou repos à la place','Pas de test maximal de pompes ce jour']}
-};
-function card(){const p=PLAN[date];if(!p)return '';const saved=(data.vacationMiniPlan||{})[date]||{};return `<section class="card" id="vac-mini-plan"><h2>Programme vacances · ${date.slice(8)}/10</h2><b>${esc(p.title)}</b><p class="mini">Proposition adaptable, non obligatoire. Coche les étapes réalisées ; elles restent distinctes des activités enregistrées dans ton historique.</p>${p.tasks.map((t,i)=>`<label style="display:flex;gap:10px;align-items:flex-start;margin:10px 0"><input type="checkbox" data-vac-task="${i}" ${saved.checks?.[i]?'checked':''} style="width:20px;flex:none;margin-top:2px"><span>${esc(t)}</span></label>`).join('')}<label>Ressenti / douleur / allure réelle<textarea data-vac-notes rows="3" placeholder="Ex. footing à 6:30/km, genou 0/10…">${esc(saved.notes||'')}</textarea></label><p class="mini">Course : deux sorties prévues lundi et samedi soir, à allure de conversation, sans objectif à 5 min/km. Les chaussures neuves peuvent améliorer le confort mais ne garantissent pas l’absence de douleur. Arrête les impacts si la douleur revient.</p></section>`}
-const prev=renderToday;
-renderToday=function(){const html=prev();return PLAN[date]?html+card():html};
-document.addEventListener('change',e=>{if(!e.target.matches('[data-vac-task]'))return;const day=date;data.vacationMiniPlan||={};const v=data.vacationMiniPlan[day]||{checks:[],notes:''};v.checks[Number(e.target.dataset.vacTask)]=e.target.checked;data.vacationMiniPlan[day]=v;persist()},true);
-document.addEventListener('input',e=>{if(!e.target.matches('[data-vac-notes]'))return;const day=date;data.vacationMiniPlan||={};const v=data.vacationMiniPlan[day]||{checks:[],notes:''};v.notes=e.target.value;data.vacationMiniPlan[day]=v;persist()},true);
-// V7.2.5 — période vacances effective du 24 octobre au 1er novembre inclus.
-// La programmation normale reprend le lundi 2 novembre, sans toucher aux entrées passées.
-const AUTO_VAC={start:'2026-10-24',end:'2026-11-01',mode:'free',mtAutoVacation2026:true};
-data.vacationPeriods ||= [];
-const priorAutoIndex=data.vacationPeriods.findIndex(p=>p.mtAutoVacation2026);
-if(priorAutoIndex>=0)data.vacationPeriods.splice(priorAutoIndex,1);
-data.vacationPeriods.unshift(AUTO_VAC);
-persist();
-// Les fiches vacances apparaissent en premier ; les séances habituelles sont suspendues.
-const mt725TodayBefore=renderToday;
-renderToday=function(){
- const h=mt725TodayBefore();
- if(!PLAN[date])return h;
- const start=h.indexOf('<section class="card" id="vac-mini-plan">');
- if(start<0)return h;
- const end=h.indexOf('</section>',start);
- if(end<0)return h;
- const plan=h.slice(start,end+10);
- const rest=h.slice(0,start)+h.slice(end+10);
- const dayNavEnd=rest.indexOf('</div>',rest.indexOf('class="days"'));
- // Insert just after date navigation when possible.
- return dayNavEnd>=0?rest.slice(0,dayNavEnd+6)+plan+rest.slice(dayNavEnd+6):plan+rest;
-};
-// Bandeau de la journée : vacances plutôt que séance LEGS/PUSH/PULL habituelle.
-const mt725RenderBefore=render;
-render=function(){
- mt725RenderBefore();
- if(view!=='today'||openId||date<'2026-10-24'||date>'2026-11-01')return;
- const hero=document.querySelector('#app .mt534e-home-hero');
- if(!hero)return;
- const name=PLAN[date]?.title||'Repos · vacances';
- const label=hero.querySelector('.mt534f-workout');
- const detail=hero.querySelector('.mt534f-detail');
- if(label)label.textContent=PLAN[date]?'VACANCES':'REPOS';
- if(detail)detail.textContent=name;
-};
-render();
-
-})();
-</script></body></html>
+</style></body></html>
