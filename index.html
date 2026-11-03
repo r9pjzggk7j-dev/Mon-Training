@@ -2018,6 +2018,27 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
 // Les deux séances programmées de pompes affichent leurs objectifs exacts.
 const v75Header=header;header=function(){return v75Header().replace(/V7\.2 TEST|V7\.3|V7\.4/gi,'V7.5')};
 const v75CSS=document.createElement('style');v75CSS.textContent='.exercise select{max-width:100%}';document.head.append(v75CSS);
+// V7.5.1 — Le sélecteur « Adapter mon planning > Remplacer sans doublon »
+// utilisait encore la liste historique complète. On conserve les IDs anciens pour
+// les données enregistrées, mais les nouveaux choix utilisent le catalogue épuré.
+const v751RenderBefore=render;
+render=function(){
+  v751RenderBefore();
+  if(openId)return;
+  const select=document.getElementById('mt534b-new');
+  if(select){
+    const oldValue=select.value;
+    select.innerHTML=V75_CATALOG.map(([group,opts])=>
+      `<optgroup label="${esc(group)}">${opts.map(([id,name])=>
+        `<option value="${esc(id)}">${esc(name)}</option>`).join('')}</optgroup>`
+    ).join('');
+    if([...select.options].some(option=>option.value===oldValue))select.value=oldValue;
+  }
+  document.querySelectorAll('.mt534h-version').forEach(label=>{
+    label.textContent='Mon Training V7.5.1 · Stockage local';
+  });
+};
+
 
 render();
 })();
