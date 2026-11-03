@@ -1866,7 +1866,7 @@ function v73Progress(){
  const special=v73SpecialDays();
  const days=Array.from({length:offset},()=>'<span></span>').concat(Array.from({length:count},(_,i)=>{
   const day=month+'-'+String(i+1).padStart(2,'0');const done=monthRows.filter(([k])=>k.startsWith(day)).length;
-  const sp=special.get(day),n=done+(sp&&!done?1:0)+attempts.filter(a=>a.date===day).length;
+  const sp=special.get(day),n=done+(sp&&!done?1:0)+(data.entries?.[day+'|v75challenge']?.done?0:attempts.filter(a=>a.date===day).length);
   return `<button type="button" data-v7-day="${day}" class="v7-day ${n?'v7-active':''} ${day===(data.v7.selectedDay||today)?'v72-selected':''}"><span class="v72-date">${i+1}</span><span class="v72-count">${n?n+' activité'+(n>1?'s':''):'—'}</span></button>`;
  }));
  const selected=data.v7.selectedDay?.startsWith(month)?data.v7.selectedDay:(month===current?today:month+'-01');
@@ -1940,6 +1940,85 @@ header=function(){return v74HeaderBefore().replace(/V7\.2 TEST|V7\.3/gi,'V7.4')}
 
 // L'import JSON existant conserve désormais les champs V6, les vacances et les séances ignorées.
 const v6Header=header;header=function(){return v6Header().replace(/V5\.3\.[0-9a-z.]+(?: TEST)?/gi,'V7.2 TEST')};
+
+// V7.5 — catalogue épuré, séances de pompes, renforcement, gainage et défis choisis librement.
+// Les anciennes séances et leurs identifiants sont conservés pour l'historique.
+const V75_CATALOG=[
+ ['Musculation',[['push39','PUSH — Pectoraux / épaules / triceps'],['pull39','PULL — Dos / biceps'],['upper39','UPPER — Haut du corps'],['legs39','LEGS — Jambes']]],
+ ['Cardio et sport',[['bikeV7','BikeErg — Durée libre'],['sportRun10b','Course à pied'],['sportCycle10b','Vélo extérieur'],['sportWalk10b','Marche'],['sportHike10b','Randonnée'],['sportSwim10b','Natation'],['sportBasket10b','Basketball']]],
+ ['Condition physique',[['wod39','WOD full body'],['pompesA','Pompes — Séance libre']]],
+ ['Renforcement et récupération',[['v75lower','Renforcement bas du corps'],['v75core','Gainage / Stabilité'],['mob39','Mobilité / Étirements']]],
+ ['Salle de garde',[['guardPush','PUSH — Salle de garde'],['guardPull','PULL — Salle de garde'],['guardLegs','LEGS — Salle de garde'],['guardBike','BikeErg — Salle de garde']]],
+ ['Programmes spécifiques',[['v75challenge','DÉFIS & RECORDS'],['free39','Autre activité personnalisée']]]
+];
+const V75_EXTRA=[
+ {id:'v75lower',name:'Renforcement bas du corps',day:-1,kind:'custom39'},
+ {id:'v75core',name:'Gainage / Stabilité',day:-1,kind:'custom39'},
+ {id:'v75challenge',name:'DÉFIS & RECORDS',day:-1,kind:'custom39'},
+ {id:'v75pompesVolume',name:'Pompes A — Volume · objectif 100',day:-1,kind:'pushups'},
+ {id:'v75pompesEndurance',name:'Pompes B — Endurance · objectif 100',day:-1,kind:'pushups'}
+];
+for(const x of V75_EXTRA)if(!sessions.some(s=>s.id===x.id))sessions.push(x);
+CUSTOM39.v75lower=[['Step-up sur marche basse — 3 × 10 par jambe',0],['Squat contrôlé — 3 × 12',0],['Équilibre sur une jambe — 3 × 30 s / jambe',30],['Pont fessier au sol — 3 × 12–15',0],['Mollets debout — 3 × 15–20',0]];
+CUSTOM39.v75core=[['Planche ventrale — 3 × 45–60 s',60],['Planche latérale — 3 × 30–45 s par côté',45],['Bird dog — 3 × 10 par côté',0],['Dead bug — 3 × 10 par côté',0]];
+CUSTOM39.v75challenge=[];
+const v75LegacyPushPlan=pushPlan;
+pushPlan=function(id,d){if(id==='v75pompesVolume')return [35,32,30,27,25];if(id==='v75pompesEndurance')return [25,25,25,25];return v75LegacyPushPlan(id,d)};
+const v75LegacyScheduled=scheduledIds;
+const v75LegacyAll=all;
+const V75_OLD_POMPS=new Set(['pompesA','pompesB','pompesC','pompesD','push39a','push39b']);
+function v75IsChallengeSunday(d){const start='2026-11-08';const diff=Math.round((new Date(d+'T12:00:00')-new Date(start+'T12:00:00'))/86400000);return diff>=0&&diff%14===0}
+function v75BasePlan(d){
+ if(d<'2026-11-03')return v75LegacyScheduled(d);
+ const day=idx(d); // Lundi 0, mardi 1, ... dimanche 6.
+ const base=[['push39'],['v75pompesVolume'],['pull39'],[],['upper39'],['legs39','v75pompesEndurance'],[]][day].slice();
+ if(v75IsChallengeSunday(d))base.push('v75challenge');
+ return base;
+}
+function v75CleanIds(ids){return [...new Set(ids.filter(id=>!V75_OLD_POMPS.has(id)&&!['knee1','lower39','pompesC','pompesD'].includes(id)))];}
+// Ne pas toucher aux dates historiques, aux périodes Vacances / Instruction ni aux journées déplacées.
+const v75ScheduledBefore=scheduledIds;
+scheduledIds=function(d){
+ if(d<'2026-11-03')return v75ScheduledBefore(d);
+ if(v10Vacation(d)?.mode==='free'||v10Vacation(d)?.mode==='pause'||v6InstructionAt(d))return v75ScheduledBefore(d);
+ if(Object.prototype.hasOwnProperty.call(data.schedule||{},d))return v75CleanIds(data.schedule[d]);
+ return v75BasePlan(d);
+};
+all=function(d){if(d<'2026-11-03')return v75LegacyAll(d);return scheduledIds(d).map(id=>sessions.find(s=>s.id===id)).filter(Boolean)};
+// Menu d'ajout libre : catégories explicites, un seul choix par famille.
+FREE_MENU10B=()=>`<div class="card"><h2>Ajouter une activité</h2><p class="mini">Catalogue simplifié. Les anciennes activités restent dans ton historique. Pour la salle de garde, choisis la séance habituelle puis le lieu.</p><label>Catégorie et activité<select id="free-select-10b">${V75_CATALOG.map(([group,opts])=>`<optgroup label="${esc(group)}">${opts.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('')}</optgroup>`).join('')}</select></label><button class="primary" data-v6-add="1">＋ Ajouter au planning</button><button data-free-open-10b="1">Ouvrir sans planifier</button><button data-free-close-10b="1">Annuler</button></div>`;
+// Remplacer aussi la liste d'adaptation du planning sans modifier les données enregistrées.
+const v75RenderBefore=render;
+render=function(){v75RenderBefore();if(!openId){const move=document.querySelector('#moveSession');if(move){const prev=move.value;move.innerHTML=V75_CATALOG.map(([g,opts])=>`<optgroup label="${esc(g)}">${opts.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('')}</optgroup>`).join('');if([...move.options].some(o=>o.value===prev))move.value=prev;}const sel=document.querySelector('#replaceNew');if(sel){const previous=sel.value;sel.innerHTML=V75_CATALOG.map(([g,opts])=>`<optgroup label="${esc(g)}">${opts.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('')}</optgroup>`).join('');if([...sel.options].some(o=>o.value===previous))sel.value=previous;}}};
+// Un défi est enregistré une seule fois dans l'activité du jour, tout en alimentant la liste existante.
+function v75ChallengeOptions(){
+ const count=available(),out=[];
+ defs.forEach((def,i)=>{if(i>=count)return;const a=info(def);for(let level=0;level<=a.unlocked;level++)out.push({key:'std:'+a.id+':'+level,name:a.name+' · niveau '+(level+1),unit:a.unit,goal:a.steps[level],done:(a.c.levels||[]).includes(level)});});
+ (data.challengesV6?.custom||[]).forEach((c,i)=>out.push({key:'custom:'+i,name:c.name,unit:c.unit,goal:c.goal,done:(c.attempts||[]).some(a=>a.value>=c.goal)}));
+ return out;
+}
+function v75ChallengeForm(){const v=get('v75challenge',date),options=v75ChallengeOptions(),selected=v.challengeAttempts||[];
+ return `<button data-back="1">← Retour</button><div class="card"><h2>DÉFIS & RECORDS</h2><p class="mini">Choisis un ou deux défis actuellement débloqués dans ton onglet Défis. Les badges déjà obtenus peuvent être retentés. Chaque essai est enregistré dans les deux espaces, sans compter deux activités.</p><p class="mini">Défis disponibles : ${options.length}. Séance prévue un dimanche sur deux, déplaçable.</p><div class="row"><button type="button" data-v75-challenge-tab="1">Voir tous mes défis</button></div>${[0,1].map(i=>{const old=selected[i]||{};return `<div class="exercise"><h3>Défi ${i+1}${i===1?' · facultatif':''}</h3><label>Défi débloqué<select data-v75-chosen="${i}"><option value="">${i===0?'Choisir un défi':'Aucun deuxième défi'}</option>${options.map(o=>`<option value="${esc(o.key)}" ${old.key===o.key?'selected':''}>${esc(o.name)}${o.done?' · déjà réussi':''}</option>`).join('')}</select></label><label>Performance réalisée<input type="number" step="any" min="0" data-v75-result="${i}" value="${esc(old.value??'')}" placeholder="Saisir la valeur dans l’unité du défi"></label><small>Unité et objectif affichés dans l’onglet Défis. Un essai enregistré ne peut pas être modifié sans restaurer une sauvegarde.</small></div>`}).join('')}<label>Commentaires<textarea data-v75-challenge-notes="1">${esc(v.notes||'')}</textarea></label><button class="primary" data-v75-challenge-save="1">✓ Enregistrer la séance et les essais</button></div>`;
+}
+const v75SessionBefore=renderSession;
+renderSession=function(){if(openId==='v75challenge')return v75ChallengeForm();return v75SessionBefore()};
+// Empêcher les anciens écouteurs de traiter ces actions après le nôtre.
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.hasAttribute('data-v75-challenge-tab')){e.preventDefault();e.stopImmediatePropagation();openId=null;view='challenges';render();return}
+ if(b.hasAttribute('data-v75-challenge-save')){
+ e.preventDefault();e.stopImmediatePropagation();const opts=v75ChallengeOptions(),chosen=[];
+ for(let i=0;i<2;i++){const key=document.querySelector(`[data-v75-chosen="${i}"]`)?.value;const raw=document.querySelector(`[data-v75-result="${i}"]`)?.value;if(!key)continue;const value=Number(raw);if(!Number.isFinite(value)||value<=0){alert('Indique une performance valide pour chaque défi sélectionné.');return}const opt=opts.find(o=>o.key===key);if(!opt){alert('Défi non disponible.');return}if(chosen.some(x=>x.key===key)){alert('Sélectionne deux défis différents.');return}chosen.push({key,value,name:opt.name,unit:opt.unit});}
+ if(!chosen.length){alert('Sélectionne au moins un défi.');return}
+ const old=get('v75challenge',date);if(old.done){alert('Cette séance est déjà enregistrée. Pour éviter les doublons, ne réenregistre pas les mêmes défis.');return}
+ if(!confirm('Enregistrer '+chosen.length+' essai(s) et une seule séance DÉFIS & RECORDS ?'))return;
+ data.challengesV6||={};for(const c of chosen){const parts=c.key.split(':');if(parts[0]==='std'){const id=parts[1],level=Number(parts[2]),def=defs.find(x=>x[0]===id);if(!def)continue;const record=data.challengesV6[id]||{levels:[],attempts:[]};record.levels||=[];record.attempts||=[];record.attempts.push({date,level,value:c.value});const target=def[3][level],ok=!target||(def[4]==='min'?c.value<=target:c.value>=target);if(ok&&!record.levels.includes(level))record.levels.push(level);data.challengesV6[id]=record;}else{const custom=data.challengesV6.custom?.[Number(parts[1])];if(custom){custom.attempts||=[];custom.attempts.push({date,value:c.value})}}}
+ set('v75challenge',date,{done:true,challengeAttempts:chosen,notes:document.querySelector('[data-v75-challenge-notes]')?.value||'',activityName:'DÉFIS & RECORDS'});openId=null;render();return;
+ }
+},true);
+// Les deux séances programmées de pompes affichent leurs objectifs exacts.
+const v75Header=header;header=function(){return v75Header().replace(/V7\.2 TEST|V7\.3|V7\.4/gi,'V7.5')};
+const v75CSS=document.createElement('style');v75CSS.textContent='.exercise select{max-width:100%}';document.head.append(v75CSS);
+
 render();
 })();
 </script><style id="mt-v603-bottom-navigation">
