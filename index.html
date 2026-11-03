@@ -2041,6 +2041,57 @@ render=function(){
 };
 
 
+// V7.5.3 — garde de 24 h, mercredi 4 novembre 2026.
+// Programme ponctuel : aucune modification des autres jours ni des données existantes.
+const V753_DATE='2026-11-04';
+const V753_IDS=['bikeV7','v75core','v753push','v753mob'];
+if(!sessions.some(x=>x.id==='v753push'))sessions.push({id:'v753push',name:'Pompes — entretien léger · garde 24 h',day:-1,kind:'pushups',optional:true});
+if(!sessions.some(x=>x.id==='v753mob'))sessions.push({id:'v753mob',name:'Mobilité / Étirements — garde 24 h',day:-1,kind:'custom39',optional:true});
+CUSTOM39.v753mob=[
+ ['Mobilité thoracique à quatre pattes — 2 × 8 par côté',0],
+ ['Ouverture des épaules contre un mur — 2 × 10',0],
+ ['Étirement doux des pectoraux — 2 × 30 s',30],
+ ['Fléchisseurs de hanche — 2 × 30 s par côté',30],
+ ['Mobilité des chevilles — 2 × 10 par côté',0],
+ ['Étirement doux des mollets — 2 × 30 s',30]
+];
+const v753OldPushPlan=pushPlan;
+pushPlan=function(id,d){if(id==='v753push')return [20,20,20,20];return v753OldPushPlan(id,d)};
+const v753OldScheduled=scheduledIds;
+scheduledIds=function(d){
+ const ids=v753OldScheduled(d);
+ if(d!==V753_DATE)return ids;
+ // Ne pas réintroduire une séance si l'utilisateur a adapté explicitement ce jour.
+ if(Object.prototype.hasOwnProperty.call(data.schedule||{},d))return ids;
+ if(v10Vacation(d)?.mode==='free'||v10Vacation(d)?.mode==='pause'||v6InstructionAt(d))return ids;
+ return [...new Set([...ids,...V753_IDS])];
+};
+all=function(d){if(d<'2026-11-03')return v75LegacyAll(d);return scheduledIds(d).map(id=>sessions.find(x=>x.id===id)).filter(Boolean)};
+const v753OldSession=renderSession;
+renderSession=function(){
+ let h=v753OldSession();
+ if(date===V753_DATE&&openId==='bikeV7'){
+  h=h.replace(/value="20"/,'value="30"');
+  h=h.replace(/(<h2>[^<]*BikeErg[^<]*<\/h2>)/i,'$1<p class="mini"><b>Matin :</b> 5 min faciles (RPE 3–4), 20 min d’endurance (RPE 5–6), 5 min retour au calme. Repère 120–140 W seulement si confortable. Garde : rester disponible et éviter la fatigue excessive.</p>');
+ }
+ if(date===V753_DATE&&openId==='v753push'){
+  h=h.replace('2 min de repos','90 s de repos');
+  h=h.replace(/data-timer="120"/g,'data-timer="90"');
+  h=h.replace(/(<h2>[^<]*Pompes[^<]*<\/h2>)/i,'$1<p class="mini"><b>Après-midi, facultatif :</b> 4 × 20 pompes faciles, 90 s de repos. Arrêter en cas de douleur, ou supprimer cette activité si fatigue après le PUSH et le PULL. Ne pas ajouter le volume Baker de 149 répétitions demain.</p>');
+ }
+ if(date===V753_DATE&&openId==='v75core')h=h.replace(/(<h2>[^<]*Gainage[^<]*<\/h2>)/i,'$1<p class="mini"><b>Matin :</b> 10–12 min, gainage confortable et sans douleur lombaire. Ajuste les séries selon la disponibilité opérationnelle.</p>');
+ if(date===V753_DATE&&openId==='v753mob')h=h.replace(/(<h2>[^<]*Mobilité[^<]*<\/h2>)/i,'$1<p class="mini"><b>Après-midi :</b> environ 15 min. Étirements doux, sans forcer sur les lombaires.</p>');
+ return h;
+};
+const v753OldRender=render;
+render=function(){v753OldRender();if(!openId&&date===V753_DATE&&view==='today'){
+ const title=document.querySelector('#app h2');
+ if(title)title.insertAdjacentHTML('afterend','<div class="notice"><b>Garde 24 h — programme ponctuel</b><br>Matin : BikeErg 30 min + gainage 10–12 min.<br>Après-midi : pompes faciles 4 × 20 (facultatif) + mobilité 15 min.<br>Priorité à la récupération et à la disponibilité opérationnelle. Toutes les activités restent déplaçables ou ignorables.</div>');
+ }
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V7.5.3 · Stockage local'});
+};
+
+
 render();
 })();
 </script><style id="mt-v603-bottom-navigation">
