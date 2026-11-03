@@ -1947,12 +1947,13 @@ const v6Header=header;header=function(){return v6Header().replace(/V5\.3\.[0-9a-
 const V75_CATALOG=[
  ['Musculation',[['push39','PUSH — Pectoraux / épaules / triceps'],['pull39','PULL — Dos / biceps'],['upper39','UPPER — Haut du corps'],['legs39','LEGS — Jambes']]],
  ['Cardio et sport',[['bikeV7','BikeErg — Durée libre'],['sportRun10b','Course à pied'],['sportCycle10b','Vélo extérieur'],['sportWalk10b','Marche'],['sportHike10b','Randonnée'],['sportSwim10b','Natation'],['sportBasket10b','Basketball']]],
- ['Condition physique',[['wod39','WOD full body'],['pompesA','Pompes — Séance libre']]],
+ ['Condition physique',[['wod39','WOD full body'],['v754pompesLibre','Pompes — Séance libre']]],
  ['Renforcement et récupération',[['v75lower','Renforcement bas du corps'],['v75core','Gainage / Stabilité'],['mob39','Mobilité / Étirements']]],
  ['Salle de garde',[['guardPush','PUSH — Salle de garde'],['guardPull','PULL — Salle de garde'],['guardLegs','LEGS — Salle de garde'],['guardBike','BikeErg — Salle de garde']]],
  ['Programmes spécifiques',[['v75challenge','DÉFIS & RECORDS'],['free39','Autre activité personnalisée']]]
 ];
 const V75_EXTRA=[
+ {id:'v754pompesLibre',name:'Pompes — Séance libre',day:-1,kind:'pushups',optional:true},
  {id:'v75lower',name:'Renforcement bas du corps',day:-1,kind:'custom39'},
  {id:'v75core',name:'Gainage / Stabilité',day:-1,kind:'custom39'},
  {id:'v75challenge',name:'DÉFIS & RECORDS',day:-1,kind:'custom39'},
@@ -2056,13 +2057,17 @@ CUSTOM39.v753mob=[
  ['Étirement doux des mollets — 2 × 30 s',30]
 ];
 const v753OldPushPlan=pushPlan;
-pushPlan=function(id,d){if(id==='v753push')return [20,20,20,20];return v753OldPushPlan(id,d)};
+pushPlan=function(id,d){if(id==='v753push'||id==='v754pompesLibre'&&d==='2026-11-04')return [20,20,20,20];if(id==='v754pompesLibre')return [20,20,20,20];return v753OldPushPlan(id,d)};
 const v753OldScheduled=scheduledIds;
 scheduledIds=function(d){
  const ids=v753OldScheduled(d);
  if(d!==V753_DATE)return ids;
  // Ne pas réintroduire une séance si l'utilisateur a adapté explicitement ce jour.
- if(Object.prototype.hasOwnProperty.call(data.schedule||{},d))return ids;
+ if(Object.prototype.hasOwnProperty.call(data.schedule||{},d)){
+  // Préserver les modifications de l'utilisateur, mais ajouter les activités
+  // de garde manquantes sur ce seul jour après une migration V7.5.3.
+  return [...new Set([...ids,...V753_IDS.filter(id=>id!=='v753push'),...(ids.some(id=>['v753push','v754pompesLibre','v75pompesVolume','v75pompesEndurance'].includes(id))||data.ignoredActivities?.[d+'|v753push']?[]:['v753push'])])];
+ }
  if(v10Vacation(d)?.mode==='free'||v10Vacation(d)?.mode==='pause'||v6InstructionAt(d))return ids;
  return [...new Set([...ids,...V753_IDS])];
 };
@@ -2088,10 +2093,12 @@ render=function(){v753OldRender();if(!openId&&date===V753_DATE&&view==='today'){
  const title=document.querySelector('#app h2');
  if(title)title.insertAdjacentHTML('afterend','<div class="notice"><b>Garde 24 h — programme ponctuel</b><br>Matin : BikeErg 30 min + gainage 10–12 min.<br>Après-midi : pompes faciles 4 × 20 (facultatif) + mobilité 15 min.<br>Priorité à la récupération et à la disponibilité opérationnelle. Toutes les activités restent déplaçables ou ignorables.</div>');
  }
- document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V7.5.3 · Stockage local'});
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V7.5.4 · Stockage local'});
 };
 
 
+// V7.5.4 : le nouveau type de pompes libres a son propre identifiant,
+// distinct des anciens IDs exclus par le filtre de migration.
 render();
 })();
 </script><style id="mt-v603-bottom-navigation">
