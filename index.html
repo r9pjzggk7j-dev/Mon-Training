@@ -1895,6 +1895,7 @@ if(Array.isArray(EX.push39)&&!EX.push39.some(x=>/triceps.*(dessus|tête)/i.test(
 
 // V7.4 — programmes validés ensemble le 03/11/2026.
 // Ne modifie ni les entrées déjà enregistrées ni leurs exerciseSnapshot.
+// V7.5.2 — curl indolore validé le 03/11/2026 : modèle PULL uniquement.
 const V74_PROGRAMMES={
  push39:[
   ['Développé couché','3 séries lourdes de 5–8 puis 1 série allégée de 12–16 (adapter la charge de la 4e série)',4,90,6,150],
@@ -1908,8 +1909,8 @@ const V74_PROGRAMMES={
   ['Tirage vertical prise neutre','4 × 8–12',4,60,10,120],
   ['Rowing poitrine soutenue','4 × 10–12',4,50,10,120],
   ['Face pull','3 × 15–20',3,25,17,75],
-  ['Curl biceps machine','3 × 10–12 · prise indolore',3,'',11,75],
-  ['Curl marteau à la corde','2 × 12–15 · facultatif si gêne avant-bras',2,'',13,75]
+  ['Curl biceps machine','3 × 10–12 · prise classique uniquement, sans prise marteau ; interrompre si douleur',3,80,12,75],
+  ['Curl biceps poulie basse, dos à la poulie','2 × 12–15 · barre, câble entre les jambes, sans prise marteau ; débuter à 25 kg',2,25,12,75]
  ],
  upper39:[
   ['Développé couché','3 × 8–12 · charge modérée, RPE 7–8',3,75,10,150],
@@ -2035,7 +2036,7 @@ render=function(){
     if([...select.options].some(option=>option.value===oldValue))select.value=oldValue;
   }
   document.querySelectorAll('.mt534h-version').forEach(label=>{
-    label.textContent='Mon Training V7.5.1 · Stockage local';
+    label.textContent='Mon Training V7.5.2 · Stockage local';
   });
 };
 
