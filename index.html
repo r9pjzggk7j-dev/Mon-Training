@@ -1319,7 +1319,7 @@ render=function(){
  app.querySelectorAll('.hero > small').forEach(el=>el.remove());
  if(view==='settings'&&!openId){
    const v=document.createElement('p');v.className='mt534h-version';
-   v.textContent='Mon Training V7.3 · Stockage local';
+   v.textContent='Mon Training V7.4 · Stockage local';
    app.appendChild(v);
  }
 };
@@ -1892,6 +1892,51 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-tab="progr
 // Programme personnel restauré uniquement si explicitement enregistré auparavant.
 for(const [id,ex] of Object.entries(data.v7.programs||{}))if(Array.isArray(ex)&&EX[id])EX[id]=ex;
 if(Array.isArray(EX.push39)&&!EX.push39.some(x=>/triceps.*(dessus|tête)/i.test(x[0])))EX.push39.push(V73_TRICEPS);
+
+// V7.4 — programmes validés ensemble le 03/11/2026.
+// Ne modifie ni les entrées déjà enregistrées ni leurs exerciseSnapshot.
+const V74_PROGRAMMES={
+ push39:[
+  ['Développé couché','3 séries lourdes de 5–8 puis 1 série allégée de 12–16 (adapter la charge de la 4e série)',4,90,6,150],
+  ['Développé incliné haltères','3 × 8–12',3,20,10,120],
+  ['Pec Deck','3 × 10–15',3,30,12,75],
+  ['Élévations latérales','3 × 12–20',3,6,15,60],
+  ['Triceps poulie','3 × 10–15',3,35,12,75],
+  ['Extension triceps à la poulie au-dessus de la tête','3 × 10–15 · sans douleur',3,35,12,75]
+ ],
+ pull39:[
+  ['Tirage vertical prise neutre','4 × 8–12',4,60,10,120],
+  ['Rowing poitrine soutenue','4 × 10–12',4,50,10,120],
+  ['Face pull','3 × 15–20',3,25,17,75],
+  ['Curl biceps machine','3 × 10–12 · prise indolore',3,'',11,75],
+  ['Curl marteau à la corde','2 × 12–15 · facultatif si gêne avant-bras',2,'',13,75]
+ ],
+ upper39:[
+  ['Développé couché','3 × 8–12 · charge modérée, RPE 7–8',3,75,10,150],
+  ['Tirage vertical prise neutre','3 × 8–12',3,60,10,120],
+  ['Rowing poitrine soutenue','3 × 10–12',3,50,11,120],
+  ['Élévations latérales','3 × 12–20',3,6,15,60],
+  ['Élévations postérieures à la poulie','2 × 12–20',2,'',15,60],
+  ['Curl biceps machine','2 × 10–12 · prise indolore',2,'',11,75],
+  ['Triceps poulie','2 × 10–15',2,35,12,75]
+ ],
+ legs39:[
+  ['Presse à cuisses','3 × 10–15 · amplitude confortable, genou surveillé',3,'',12,120],
+  ['Goblet squat','3 × 10–12 · amplitude confortable',3,'',10,120],
+  ['Leg curl couché','3 × 10–15',3,'',12,90],
+  ['Soulevé de terre roumain haltères','3 × 8–12 · RPE 6–7 au début, dos neutre',3,'',10,120],
+  ['Mollets debout','3 × 12–20',3,'',15,75]
+ ]
+};
+for(const [id,programme] of Object.entries(V74_PROGRAMMES)){
+ EX[id]=programme.map(ex=>[...ex]);
+ // Des remplacements d'exercices enregistrés par index dans une ancienne version
+ // ne doivent pas écraser silencieusement le nouveau programme validé.
+ if(data.programOverrides)for(const key of Object.keys(data.programOverrides))if(key.startsWith(id+'|'))delete data.programOverrides[key];
+}
+// Conserver les modifications du jour (exerciseSnapshot) et les séances terminées.
+const v74HeaderBefore=header;
+header=function(){return v74HeaderBefore().replace(/V7\.2 TEST|V7\.3/gi,'V7.4')};
 
 // L'import JSON existant conserve désormais les champs V6, les vacances et les séances ignorées.
 const v6Header=header;header=function(){return v6Header().replace(/V5\.3\.[0-9a-z.]+(?: TEST)?/gi,'V7.2 TEST')};
