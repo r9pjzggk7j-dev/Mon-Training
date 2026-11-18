@@ -2093,9 +2093,48 @@ render=function(){v753OldRender();if(!openId&&date===V753_DATE&&view==='today'){
  const title=document.querySelector('#app h2');
  if(title)title.insertAdjacentHTML('afterend','<div class="notice"><b>Garde 24 h — programme ponctuel</b><br>Matin : BikeErg 30 min + gainage 10–12 min.<br>Après-midi : pompes faciles 4 × 20 (facultatif) + mobilité 15 min.<br>Priorité à la récupération et à la disponibilité opérationnelle. Toutes les activités restent déplaçables ou ignorables.</div>');
  }
- document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V7.5.4 · Stockage local'});
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V7.5.5 · Stockage local'});
 };
 
+
+// V7.5.5 — reprise progressive du 18 au 22 novembre après maladie.
+// Migration unique : sauvegarde le planning remplacé, sans modifier entries,
+// les séances terminées, les brouillons, les défis ni les historiques.
+const V755_REPRISE={
+ '2026-11-18':['push39'],
+ '2026-11-19':['bikeV7','mob39'],
+ '2026-11-20':['pull39'],
+ '2026-11-21':[],
+ '2026-11-22':['legs39']
+};
+if(!data.v755RestartApplied){
+ data.v755PreviousSchedule ||= {};
+ data.schedule ||= {};
+ for(const [day,ids] of Object.entries(V755_REPRISE)){
+  data.v755PreviousSchedule[day]=Object.prototype.hasOwnProperty.call(data.schedule,day)?[...data.schedule[day]]:null;
+  // Ne jamais retirer une activité déjà effectuée ce jour.
+  const completed=Object.keys(data.entries||{}).filter(k=>k.startsWith(day+'|')&&data.entries[k]?.done===true).map(k=>k.slice(11)).filter(id=>sessions.some(x=>x.id===id));
+  data.schedule[day]=[...new Set([...ids,...completed])];
+ }
+ data.v755RestartApplied=true;
+ persist();
+}
+const v755BeforeRender=render;
+render=function(){
+ v755BeforeRender();
+ if(!openId&&view==='today'&&Object.prototype.hasOwnProperty.call(V755_REPRISE,date)){
+  const title=document.querySelector('#app h2');
+  const messages={
+   '2026-11-18':'<b>Reprise — PUSH</b> · 35–50 min, environ 2 séries par exercice, RPE 6–7, sans échec. Développé couché : démarrer léger et adapter selon les sensations.',
+   '2026-11-19':'<b>Récupération active</b> · BikeErg 30–40 min facile (RPE 3–4) puis mobilité 10 min. Réduire ou supprimer si fatigue.',
+   '2026-11-20':'<b>Reprise — PULL</b> · 35–50 min, 2 séries par exercice, RPE 6–7, sans échec et sans douleur à l’avant-bras.',
+   '2026-11-21':'<b>Repos</b> · marche tranquille facultative, aucune séance à rattraper.',
+   '2026-11-22':'<b>Jambes allégées ou mobilité</b> · 30–40 min, 2 séries par exercice, RPE 6–7. Si fatigue ou genou sensible, remplacer par mobilité.'
+  };
+  if(title)title.insertAdjacentHTML('afterend','<div class="notice">'+messages[date]+'<br><small>Après maladie : attendre au moins 24 h sans fièvre et une nette amélioration. Arrêter en cas de douleur thoracique, palpitations ou essoufflement anormal. Les charges et séries affichées peuvent être celles de la dernière séance : elles ne sont pas des objectifs de reprise.</small></div>');
+ }
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V7.5.5 · Stockage local'});
+};
 
 // V7.5.4 : le nouveau type de pompes libres a son propre identifiant,
 // distinct des anciens IDs exclus par le filtre de migration.
