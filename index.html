@@ -2186,9 +2186,10 @@ lastExercise=function(id,i,beforeDate){
  for(const [key,entry] of records){
   const day=key.slice(0,10);
   const programme=entry.exerciseSnapshot||(day<V8_START?V74_PROGRAMMES[id]:V8_PROGRAMMES[id]);
-  const index=programme.findIndex(ex=>ex[0]===name);
-  const rows=entry.sets?.[index];
-  if(rows?.some(row=>Number(row.reps)>0))return {date:day,entry,rows};
+  const index=Object.keys(programme).find(key=>programme[key]?.[0]===name);
+  if(index===undefined)continue;
+  const rows=Object.values(entry.sets?.[index]||{}).filter(row=>row && typeof row==='object');
+  if(rows.some(row=>Number(row.reps)>0))return {date:day,entry,rows};
  }
  return null;
 };
@@ -2247,7 +2248,7 @@ header=function(){return v8PreviousHeader().replace(/V7\.5\b/g,'V8')};
 const v8PreviousRender=render;
 render=function(){
  v8PreviousRender();
- document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8 · Stockage local'});
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.0.1 · Stockage local'});
 };
 
 // V7.5.4 : le nouveau type de pompes libres a son propre identifiant,
