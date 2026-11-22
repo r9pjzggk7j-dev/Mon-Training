@@ -1,5 +1,13 @@
-Mon Training V5.3.3.9e — TEST iPhone du signal sonore.
+Mon Training V8
 
-Signal de fin : trois bips renforcés, indicateur visuel vert et bouton « Tester le son ». Le son dépend du volume, du mode silencieux et des règles iOS.
+Cette archive contient les fichiers à la racine du dépôt GitHub Pages.
+Base : Mon Training V7.5.5, commit 14f50e8.
 
-Conserve la sauvegarde JSON et ne supprime pas la PWA existante. Tester sur Mac avant déploiement.
+Depuis Mon Training sur l’iPhone, exporte d’abord une sauvegarde JSON dans
+Données. Décompresse cette archive et remplace les fichiers du dépôt dans sa
+branche main. Une fois GitHub Pages déployé, rouvre Mon Training à l’adresse
+habituelle. Garde le raccourci iPhone existant.
+
+Les modèles PULL et LEGS V8 s’appliquent à partir du lundi 23 novembre 2026.
+Les trois formats BikeErg, le gainage/abdos et les pompes sont dans Ajouter
+une activité. Les mesures affichées par le BikeErg se saisissent manuellement.

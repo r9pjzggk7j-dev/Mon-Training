@@ -101,6 +101,8 @@ const EX={push:[['Développé couché','4 × 9 • 70 kg • RPE 7–8',4,70,9,1
 EX.push[4]=['Élévations latérales','4 × 12–20 · contrôle strict',4,6,15,60];
 EX.pull=[['Tirage vertical neutre','4 × 8–12 · sans douleur avant-bras',4,60,10,120],['Rowing poitrine soutenue','4 × 10–12',4,50,10,120],['Tirage horizontal prise neutre','3 × 10–12',3,'',11,105],['Face pull','3 × 15–20',3,25,17,75],['Élévations postérieures à la poulie','3 × 12–20 · sans douleur',3,'',15,75]];
 const MOB=[['Chat / Vache','8 répétitions'],['Open Book','8 par côté'],['Fléchisseurs de hanche','30 s par jambe'],['Ischio-jambiers','30 s par jambe'],['Cheville vers le mur','10 par jambe'],['Pectoraux contre porte','30 s par côté'],['Wall Slides','10 répétitions']];
+const V8_BIKE=Object.create(null);
+const V8_EXTEND_POMPS=new Set();
 const sessions=[{id:'push',name:'PUSH — Pectoraux / épaules / triceps',day:0,kind:'strength'},{id:'bike1',name:'BikeErg — Endurance 20 min',day:1,kind:'bike'},{id:'pompesA',name:'Pompes A — Volume',day:1,kind:'pushups'},{id:'knee1',name:'Rééducation genou — légère',day:1,kind:'knee'},{id:'mob1',name:'Mobilité',day:1,kind:'mobility'},{id:'pull',name:'PULL — Dos / biceps',day:2,kind:'strength'},{id:'bike2',name:'BikeErg — 20 min',day:3,kind:'bike'},{id:'pompesB',name:'Pompes B — Technique',day:3,kind:'pushups'},{id:'mob2',name:'Mobilité',day:3,kind:'mobility'},{id:'legs',name:'LEGS — Genou + abdos',day:4,kind:'strength'},{id:'bike3',name:'BikeErg — Endurance 20 min',day:5,kind:'bike'},{id:'pompesC',name:'Pompes C — Endurance',day:5,kind:'pushups'},{id:'pompesD',name:'Pompes D — Facultatif',day:6,kind:'pushups',optional:true},{id:'mob3',name:'Mobilité douce',day:6,kind:'mobility',optional:true},{id:'wod',name:'WOD full body — Facultatif',day:5,kind:'wod',optional:true}];
 const start='2026-10-12';function cycleWeek(d){return Math.max(1,Math.floor((monday(d)-monday(start))/604800000)+1)}function pushPlan(id,date){const w=cycleWeek(date);let base=[35,32,29,26,23];let step=Math.min(5,Math.max(0,Math.floor((w-1)/1)));if(id==='pompesA')return base.map(x=>x+step);if(id==='pompesB')return [25,25,25,25];if(id==='pompesC')return [35,35,35];return [20,20,20]}
 let data={entries:{},restPrefs:{},baseline:{date:'2026-10-12',bench:'70 kg × 8/8/8/8, RPE dernière série 7',pushMax:65}};try{const saved=JSON.parse(localStorage.getItem(KEY)||'null');if(saved&&saved.entries)data=saved}catch(e){}data.restPrefs ||= {}; data.programOverrides ||= {}; data.likes ||= {}; data.cycleStart ||= "2026-10-12"; data.programHistory ||= []; data.progressDecisions ||= {};
@@ -518,16 +520,17 @@ renderSession=function(){
  const rows=targets.map((target,i)=>{
   const done=v.pushValidated?.[i]===true;
   const saved=done?(v.push?.[i]??target):'';
-  return `<div class="card push-series ${done?'push-complete':''}" data-push-row="${i}"><div class="push-series-top"><div><b>Série ${i+1}</b><br><small>Objectif : ${target} pompes</small></div><span class="push-state">${done?'✓ Validée':'À effectuer'}</span></div><div class="push-series-actions"><label>Réalisées<input type="number" inputmode="numeric" min="0" max="250" step="1" data-field="push.${i}" value="${esc(saved)}" placeholder="${target}"></label><button type="button" class="${done?'done':'primary'}" data-confirm-push="${i}">${done?'↶ Modifier':'✓ Série validée'}</button></div><p class="mini push-hint">${done?'Série enregistrée. Tu peux la corriger.':'Un appui valide l’objectif ; saisis un autre nombre si tu as fait moins.'}</p></div>`;
+  return `<div class="card push-series ${done?'push-complete':''}" data-push-row="${i}"><div class="push-series-top"><div><b>Série ${i+1}</b><br><small>${target===null?'Répétitions à saisir':'Objectif : '+target+' pompes'}</small></div><span class="push-state">${done?'✓ Validée':'À effectuer'}</span></div><div class="push-series-actions"><label>Réalisées<input type="number" inputmode="numeric" min="0" max="250" step="1" data-field="push.${i}" value="${esc(saved)}" placeholder="${target??''}"></label><button type="button" class="${done?'done':'primary'}" data-confirm-push="${i}">${done?'↶ Modifier':'✓ Série validée'}</button></div><p class="mini push-hint">${done?'Série enregistrée. Tu peux la corriger.':'Un appui valide l’objectif ; saisis un autre nombre si tu as fait moins.'}</p></div>`;
  }).join('');
  // Supprimer UNIQUEMENT les anciennes lignes, puis injecter les nouvelles cartes
  // avant le bloc de ressenti. Ne jamais supprimer les nouvelles cartes générées.
  h=h.replace(/<div class="row card"><b>Série \d+ · cible \d+<\/b>[\s\S]*?<button data-timer="120">⏱<\/button><\/div>/g,'');
  const marker='<div class="card push-coach">';
- if(h.includes(marker)) h=h.replace(marker,rows+marker);
+ const add=V8_EXTEND_POMPS.has(openId)?'<button type="button" data-v8-push-add>＋ Ajouter une série</button>':'';
+ if(h.includes(marker)) h=h.replace(marker,rows+add+marker);
  else {
    const footer='<div class="grid">';
-   if(h.includes(footer))h=h.replace(footer,rows+footer);
+   if(h.includes(footer))h=h.replace(footer,rows+add+footer);
    else throw new Error('Emplacement des séries de pompes introuvable');
  }
  // Hide complexity unless requested; keep all data-field values in the DOM for capture().
@@ -546,6 +549,7 @@ document.addEventListener('click',e=>{
  const wasValid=v.pushValidated[i]===true;
  if(wasValid){v.pushValidated[i]=false;v.push[i]='';set(openId,date,{...v,updatedAt:new Date().toISOString()});render();return}
  const raw=input.value.trim();const target=pushPlan(openId,date)[i];
+ if(raw===''&&target===null){alert('Saisis tes répétitions avant de valider.');return}
  const reps=raw===''?target:Number(raw);
  if(!Number.isInteger(reps)||reps<0||reps>250){alert('Indique un nombre de répétitions entre 0 et 250.');return}
  v.push[i]=String(reps);v.pushValidated[i]=true;v.updatedAt=new Date().toISOString();set(openId,date,v);
@@ -1596,7 +1600,12 @@ function prefillLatest(s){
  fields.forEach(el=>{const parts=el.dataset.field.split('.');if(parts.length!==4)return;
   const i=+parts[1],j=+parts[2],prop=parts[3];const target=currentEx(s.id,i)?.[0];
   for(const [k,v] of prior){let idx=i;const snap=v.exerciseSnapshot;
-   if(Array.isArray(snap)&&target){const exact=snap.findIndex(x=>String(x?.[0]||'').toLowerCase().trim()===String(target).toLowerCase().trim());if(exact>=0)idx=exact;else if(k.split('|')[1]!==s.id)continue;}
+   if(Array.isArray(snap)&&target){const exact=snap.findIndex(x=>String(x?.[0]||'').toLowerCase().trim()===String(target).toLowerCase().trim());if(exact>=0)idx=exact;else if(v8UsesProgramme(s.id)||k.split('|')[1]!==s.id)continue;}
+   else if(v8UsesProgramme(s.id)){
+    const oldProgramme=k.split('|')[1]===s.id?(k.slice(0,10)<V8_START?V74_PROGRAMMES[s.id]:V8_PROGRAMMES[s.id]):EX[k.split('|')[1]];
+    idx=oldProgramme?.findIndex(ex=>ex[0]===target)??-1;
+    if(idx<0)continue;
+   }
    const row=v.sets?.[idx]?.[j];if(row&&row[prop]!==undefined&&row[prop]!==''&&Number.isFinite(Number(row[prop]))){el.value=row[prop];applied=true;break;}
   }
  });
@@ -1727,9 +1736,9 @@ FREE_MENU10B=()=>v71FreeMenuBefore().replace(/<option value="(?:bikeEnd39|bikeEa
 // Les anciens choix ne sont pas effacés des historiques.
 const v71SessionBefore=renderSession;
 renderSession=function(){
- if(openId==='bikeV7'){
-  const v=get(openId,date);
-  return `<button data-back="1">← Retour</button><div class="card"><h2>BikeErg — durée libre</h2><small>${esc(date)} · Saisie après la séance</small><p class="mini">Renseigne les valeurs réellement affichées sur le moniteur. Aucun objectif de durée imposé.</p><div class="grid">${formInput('Durée réelle (minutes)','minutes',v.minutes??'')}${formInput('Distance (mètres)','distance',v.distance??'')}${formInput('Puissance moyenne (watts)','watts',v.watts??'')}${formInput('Cadence moyenne (tr/min)','rpm',v.rpm??'')}${formInput('Calories (kcal)','calories',v.calories??'')}${formInput('RPE /10','v7Rpe',v.v7Rpe??v.effort??'')}</div><label>Ressenti et commentaires<textarea data-field="notes">${esc(v.notes||'')}</textarea></label><button class="primary" style="width:100%" data-save="1">${v.done?'✓ Mettre à jour la séance':'✓ Terminer la séance'}</button><button data-back="1">Retour</button></div>`;
+ if(openId==='bikeV7'||V8_BIKE[openId]){
+  const v=get(openId,date), format=V8_BIKE[openId];
+  return `<button data-back="1">← Retour</button><div class="card"><h2>${esc(format?.[0]||'BikeErg — durée libre')}</h2><small>${esc(date)} · Saisie après la séance</small><p class="mini">${esc(format?.[1]||'Renseigne les valeurs réellement affichées sur le moniteur.')}</p><div class="grid">${formInput('Durée réelle (minutes)','minutes',v.minutes??'')}${formInput('Distance (mètres)','distance',v.distance??'')}${formInput('Puissance moyenne (watts)','watts',v.watts??'')}${formInput('Cadence moyenne (tr/min)','rpm',v.rpm??'')}${formInput('Calories (kcal)','calories',v.calories??'')}${formInput('RPE /10','v7Rpe',v.v7Rpe??v.effort??'')}</div><label>Ressenti et commentaires<textarea data-field="notes">${esc(v.notes||'')}</textarea></label><button class="primary" style="width:100%" data-save="1">${v.done?'✓ Mettre à jour la séance':'✓ Terminer la séance'}</button><button data-back="1">Retour</button></div>`;
  }
  return v71SessionBefore().replace(/<button type="button" data-mt534-minus-set="\d+">[^<]*<\/button>/g,'');
 };
@@ -2134,6 +2143,111 @@ render=function(){
   if(title)title.insertAdjacentHTML('afterend','<div class="notice">'+messages[date]+'<br><small>Après maladie : attendre au moins 24 h sans fièvre et une nette amélioration. Arrêter en cas de douleur thoracique, palpitations ou essoufflement anormal. Les charges et séries affichées peuvent être celles de la dernière séance : elles ne sont pas des objectifs de reprise.</small></div>');
  }
  document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V7.5.5 · Stockage local'});
+};
+
+// V8 — programmes sportifs à partir de la première semaine complète.
+const V8_START='2026-11-23';
+const V8_PROGRAMMES={
+ pull39:[
+  ['Tirage vertical prise neutre','4 × 8–12 · prise largeur d’épaules · repère 70 kg',4,70,10,120],
+  ['Tirage horizontal neutre serré','4 × 10–12 · repère 50 kg',4,50,10,120],
+  ['Face pull','3 × 12–15 · repère 40 kg',3,40,13,75],
+  ['Curl biceps machine','3 × 10–12 · prise classique · repère 80 kg',3,80,11,75],
+  ['Curl biceps poulie basse, dos à la poulie','2 × 12–15 · barre, câble entre les jambes · repère 35 kg',2,35,13,75]
+ ],
+ legs39:[
+  ['Belt squat','4 × 10–12 · amplitude confortable',4,'',10,120],
+  ['Presse à cuisses','4 × 10–15 · amplitude confortable',4,'',12,120],
+  ['Hip thrust','3 × 10–12',3,'',10,90],
+  ['Leg curl couché','3 × 10–15',3,'',12,90],
+  ['Mollets debout','3 × 12–20',3,'',15,75]
+ ]
+};
+function v8UsesProgramme(id){
+ return date>=V8_START&&Object.prototype.hasOwnProperty.call(V8_PROGRAMMES,id);
+}
+const v8PreviousExercise=currentEx;
+currentEx=function(id,i){
+ if(!v8UsesProgramme(id))return v8PreviousExercise(id,i);
+ const base=V8_PROGRAMMES[id][i];
+ if(!base)return null;
+ const override=data.programOverrides?.[id+'|'+i];
+ if(override?.name!==base[0])return base;
+ return [base[0],override.description||base[1],Number(override.sets)||base[2],override.kg??base[3],Number(override.reps)||base[4],Number(override.rest??base[5])];
+};
+const v8PreviousLastExercise=lastExercise;
+lastExercise=function(id,i,beforeDate){
+ if(!v8UsesProgramme(id))return v8PreviousLastExercise(id,i,beforeDate);
+ const name=currentEx(id,i)?.[0];
+ if(!name)return null;
+ const records=Object.entries(data.entries)
+  .filter(([key,entry])=>key.endsWith('|'+id)&&key.slice(0,10)<beforeDate&&entry.done)
+  .sort(([a],[b])=>b.localeCompare(a));
+ for(const [key,entry] of records){
+  const day=key.slice(0,10);
+  const programme=entry.exerciseSnapshot||(day<V8_START?V74_PROGRAMMES[id]:V8_PROGRAMMES[id]);
+  const index=programme.findIndex(ex=>ex[0]===name);
+  const rows=entry.sets?.[index];
+  if(rows?.some(row=>Number(row.reps)>0))return {date:day,entry,rows};
+ }
+ return null;
+};
+Object.assign(V8_BIKE,{
+ bikeV8Endurance:['BikeErg A — Endurance','45 à 60 min · résistance 3 · 70 à 80 tr/min. Commence autour de 75 tr/min.'],
+ bikeV8Intervals:['BikeErg B — Fractionné','20 min : 5 min faciles, puis 6 × (45 s à 100–110 tr/min + 75 s faciles), puis 3 min faciles.'],
+ bikeV8Performance:['BikeErg C — Performance','20 min · résistance 3 · 88 à 92 tr/min. Vise environ 90 tr/min sur la séance.']
+});
+for(const [id,[name]] of Object.entries(V8_BIKE))sessions.push({id,name,day:-1,kind:'bike'});
+V75_CATALOG[1][1].unshift(...Object.entries(V8_BIKE).map(([id,[name]])=>[id,name]));
+const v8Core={id:'v8core',name:'Gainage / Abdos',day:-1,kind:'custom39'};
+sessions.push(v8Core);
+CUSTOM39.v8core=[
+ ['Gainage sur les coudes — 3 × 45–60 s',45],
+ ['Hollow hold groupé — 3 × 20–30 s',20],
+ ['Chaise contre le mur — 3 × 30–45 s',30],
+ ['Crunch contrôlé — 2 × 10–15, si toléré',0],
+ ['Reverse crunch — 2 × 8–12, si toléré',0]
+];
+V75_CATALOG[3][1][1]=[v8Core.id,v8Core.name];
+const v8MaxPush={id:'v8pushMax',name:'Pompes — Test maximal',day:-1,kind:'pushups'};
+sessions.push(v8MaxPush);
+for(const id of ['v75pompesVolume','v75pompesEndurance',v8MaxPush.id]){
+ V75_CATALOG[2][1].push([id,sessions.find(s=>s.id===id).name]);
+}
+for(const id of ['v75pompesVolume','v75pompesEndurance','v754pompesLibre'])V8_EXTEND_POMPS.add(id);
+const v8PreviousPushPlan=pushPlan;
+pushPlan=function(id,d){
+ if(id===v8MaxPush.id)return [null];
+ const plan=v8PreviousPushPlan(id,d);
+ const extra=V8_EXTEND_POMPS.has(id)?Number(get(id,d).extraPushSets)||0:0;
+ return [...plan,...Array(Math.max(0,Math.min(20,Math.trunc(extra)))).fill(null)];
+};
+document.addEventListener('click',e=>{
+ if(!e.target.closest('[data-v8-push-add]')||!V8_EXTEND_POMPS.has(openId))return;
+ e.preventDefault();
+ saveDraft();
+ const extra=Number(get(openId,date).extraPushSets)||0;
+ if(extra>=20)return;
+ set(openId,date,{extraPushSets:extra+1});
+ render();
+},true);
+const v8PreviousSession=renderSession;
+renderSession=function(){
+ const html=v8PreviousSession();
+ if(openId===v8Core.id)return html.replace('<h2>Gainage / Abdos</h2>','<h2>Gainage / Abdos</h2><p class="mini">15 à 25 min · 45 à 60 s de repos entre les séries.</p>');
+ if(openId===v8MaxPush.id)return html.replace(/(<div class="card push-coach">)<b>[^<]*<\/b><p class="mini">[^<]*<\/p>/,'$1<b>Test maximal</b><p class="mini">Après échauffement, compte les répétitions propres réalisées sur une seule série.</p>');
+ if(V8_EXTEND_POMPS.has(openId)){
+  const targets=v8PreviousPushPlan(openId,date);
+  return html.replace(/(<div class="card push-coach">)<b>[^<]*<\/b><p class="mini">[^<]*<\/p>/,'$1<b>Séries prévues</b><p class="mini">'+targets.join(' / ')+' répétitions · 2 min de repos.</p>');
+ }
+ return html;
+};
+const v8PreviousHeader=header;
+header=function(){return v8PreviousHeader().replace(/V7\.5\b/g,'V8')};
+const v8PreviousRender=render;
+render=function(){
+ v8PreviousRender();
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8 · Stockage local'});
 };
 
 // V7.5.4 : le nouveau type de pompes libres a son propre identifiant,
