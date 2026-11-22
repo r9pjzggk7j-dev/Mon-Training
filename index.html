@@ -186,7 +186,7 @@ if(b.dataset.acceptProgress){const key=b.dataset.acceptProgress, proposal=progre
 if(b.dataset.rejectProgress){data.progressDecisions[b.dataset.rejectProgress]={date:todayISO(),status:'rejected'};persist();render();return}
 if(b.id==='importCoach'){const input=document.querySelector('#coachFile');if(input)input.click();return}
 if(b.id==='undoCoach'){const last=data.programHistory.pop();if(!last){alert('Aucune modification à annuler.');return}if(last.type==='coach-batch'){data.programOverrides=last.previous;data.cycleStart=last.previousCycleStart||data.cycleStart}else if(last.key){if(last.previous)data.programOverrides[last.key]=last.previous;else delete data.programOverrides[last.key]}persist();render();return}
-if(b.dataset.videoSave){const name=b.dataset.videoSave;const input=[...document.querySelectorAll('[data-video-input]')].find(x=>x.dataset.videoInput===name);const url=(input?.value||'').trim();if(url && !/^https:\/\/(www\.)?(youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}|youtu\.be\/[a-zA-Z0-9_-]{11})(?:[&#?].*)?$/.test(url)){alert('Colle un lien direct vers une vidéo YouTube.');return}data.videoPrefs ||= {};data.videoPrefs[name]=url;persist();render();return}if(b.id==='clear'&&confirm('Effacer définitivement toutes les séances enregistrées sur cet appareil ?')){data.entries={};persist();render()}});document.addEventListener('input',e=>{if(e.target.id==='lexSearch')document.querySelector('#lexItems').innerHTML=lexItems(e.target.value)});document.addEventListener('change',async e=>{if(e.target.dataset.restpref){const val=Number(e.target.value);if(!Number.isFinite(val)||val<0||val>1200){alert('Choisis une durée entre 0 et 1200 secondes.');return}data.restPrefs[e.target.dataset.restpref]=val;persist();const btn=e.target.closest('.exercise')?.querySelector('[data-timer]');if(btn)btn.dataset.timer=val;return}if(e.target.id==='coachFile'){try{const file=e.target.files?.[0];if(!file)return;const r=JSON.parse(await file.text());if(r.format!=='mon-training-coach-v5'||!Array.isArray(r.changes))throw Error('Format attendu : mon-training-coach-v5 et changes[]');if(!r.changes.length||r.changes.length>40)throw Error('Nombre de modifications invalide');const proposed={...data.programOverrides};const preview=[];for(const c of r.changes){if(!['push','pull','legs'].includes(c.session)||!Number.isInteger(c.index)||c.index<0||c.index>=EX[c.session].length)throw Error('Exercice inconnu : '+JSON.stringify(c));const key=c.session+'|'+c.index,base=currentEx(c.session,c.index);const vals={name:String(c.name||base[0]).slice(0,100),description:String(c.description||base[1]).slice(0,180),sets:Number(c.sets??base[2]),kg:Number(c.kg??base[3]),reps:Number(c.reps??base[4]),rest:Number(c.rest??base[5])};if(![vals.sets,vals.kg,vals.reps,vals.rest].every(Number.isFinite)||vals.sets<1||vals.sets>10||vals.kg<0||vals.kg>400||vals.reps<1||vals.reps>100||vals.rest<0||vals.rest>1200)throw Error('Valeur hors limite : '+key);proposed[key]=vals;preview.push(`${base[0]} → ${vals.name} : ${vals.sets}×${vals.reps} à ${vals.kg} kg, repos ${vals.rest} s`)}if(confirm('Appliquer ces modifications ?\n\n'+preview.join('\n')+'\n\nL’ancien programme reste récupérable.')){data.programHistory.push({at:new Date().toISOString(),type:'coach-batch',previous:{...data.programOverrides},previousCycleStart:data.cycleStart});data.programOverrides=proposed;if(r.newCycle===true)data.cycleStart=todayISO();persist();render()}}catch(err){alert('Import impossible : '+err.message)}return}if(e.target.id!=='import')return;try{const r=JSON.parse(await e.target.files[0].text());if(!r.entries||typeof r.entries!=='object')throw Error('Format non reconnu');if(confirm('Remplacer les résultats actuels par cette sauvegarde ?')){data={entries:r.entries,restPrefs:r.restPrefs||{},baseline:r.baseline||data.baseline,programOverrides:r.programOverrides||{},programHistory:r.programHistory||[],progressDecisions:r.progressDecisions||{},likes:r.likes||{},videoPrefs:r.videoPrefs||{},cycleStart:r.cycleStart||'2026-10-12',schedule:r.schedule||{},locationPrefs:r.locationPrefs||{},soundEnabled:r.soundEnabled??true,bandColors:r.bandColors||{},pushupLevels:r.pushupLevels||{},backupReminder:r.backupReminder||{lastAcknowledged:null},ignoredActivities:r.ignoredActivities||{},vacationPeriods:r.vacationPeriods||[],challengesV6:r.challengesV6||{},healthV6:r.healthV6||{},instructionV6:r.instructionV6||[],v604Added:r.v604Added||{},v10Graph:r.v10Graph||'strength'};persist();render()}}catch(err){alert('Impossible d’importer : '+err.message)}});
+if(b.dataset.videoSave){const name=b.dataset.videoSave;const input=[...document.querySelectorAll('[data-video-input]')].find(x=>x.dataset.videoInput===name);const url=(input?.value||'').trim();if(url && !/^https:\/\/(www\.)?(youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}|youtu\.be\/[a-zA-Z0-9_-]{11})(?:[&#?].*)?$/.test(url)){alert('Colle un lien direct vers une vidéo YouTube.');return}data.videoPrefs ||= {};data.videoPrefs[name]=url;persist();render();return}if(b.id==='clear'&&confirm('Effacer définitivement toutes les séances enregistrées sur cet appareil ?')){data.entries={};persist();render()}});document.addEventListener('input',e=>{if(e.target.id==='lexSearch')document.querySelector('#lexItems').innerHTML=lexItems(e.target.value)});document.addEventListener('change',async e=>{if(e.target.dataset.restpref){const val=Number(e.target.value);if(!Number.isFinite(val)||val<0||val>1200){alert('Choisis une durée entre 0 et 1200 secondes.');return}data.restPrefs[e.target.dataset.restpref]=val;persist();const btn=e.target.closest('.exercise')?.querySelector('[data-timer]');if(btn)btn.dataset.timer=val;return}if(e.target.id==='coachFile'){try{const file=e.target.files?.[0];if(!file)return;const r=JSON.parse(await file.text());if(r.format!=='mon-training-coach-v5'||!Array.isArray(r.changes))throw Error('Format attendu : mon-training-coach-v5 et changes[]');if(!r.changes.length||r.changes.length>40)throw Error('Nombre de modifications invalide');const proposed={...data.programOverrides};const preview=[];for(const c of r.changes){if(!['push','pull','legs'].includes(c.session)||!Number.isInteger(c.index)||c.index<0||c.index>=EX[c.session].length)throw Error('Exercice inconnu : '+JSON.stringify(c));const key=c.session+'|'+c.index,base=currentEx(c.session,c.index);const vals={name:String(c.name||base[0]).slice(0,100),description:String(c.description||base[1]).slice(0,180),sets:Number(c.sets??base[2]),kg:Number(c.kg??base[3]),reps:Number(c.reps??base[4]),rest:Number(c.rest??base[5])};if(![vals.sets,vals.kg,vals.reps,vals.rest].every(Number.isFinite)||vals.sets<1||vals.sets>10||vals.kg<0||vals.kg>400||vals.reps<1||vals.reps>100||vals.rest<0||vals.rest>1200)throw Error('Valeur hors limite : '+key);proposed[key]=vals;preview.push(`${base[0]} → ${vals.name} : ${vals.sets}×${vals.reps} à ${vals.kg} kg, repos ${vals.rest} s`)}if(confirm('Appliquer ces modifications ?\n\n'+preview.join('\n')+'\n\nL’ancien programme reste récupérable.')){data.programHistory.push({at:new Date().toISOString(),type:'coach-batch',previous:{...data.programOverrides},previousCycleStart:data.cycleStart});data.programOverrides=proposed;if(r.newCycle===true)data.cycleStart=todayISO();persist();render()}}catch(err){alert('Import impossible : '+err.message)}return}if(e.target.id!=='import')return;try{const r=JSON.parse(await e.target.files[0].text());if(!r.entries||typeof r.entries!=='object')throw Error('Format non reconnu');if(confirm('Remplacer les résultats actuels par cette sauvegarde ?')){data={...r,entries:r.entries,restPrefs:r.restPrefs||{},baseline:r.baseline||data.baseline,programOverrides:r.programOverrides||{},programHistory:r.programHistory||[],progressDecisions:r.progressDecisions||{},likes:r.likes||{},videoPrefs:r.videoPrefs||{},cycleStart:r.cycleStart||'2026-10-12',schedule:r.schedule||{},locationPrefs:r.locationPrefs||{},soundEnabled:r.soundEnabled??true,bandColors:r.bandColors||{},pushupLevels:r.pushupLevels||{},backupReminder:r.backupReminder||{lastAcknowledged:null},ignoredActivities:r.ignoredActivities||{},vacationPeriods:r.vacationPeriods||[],challengesV6:r.challengesV6||{},healthV6:r.healthV6||{},instructionV6:r.instructionV6||[],v604Added:r.v604Added||{},v10Graph:r.v10Graph||'strength'};persist();location.reload()}}catch(err){alert('Impossible d’importer : '+err.message)}});
 // V5.3 — extensions non destructives : les clés de stockage et exports V5.2 restent compatibles.
 data.schedule ||= {}; data.locationPrefs ||= {}; data.soundEnabled ??= true;
 const guardExercises={
@@ -245,17 +245,17 @@ function threeBeeps(){
  try{
   unlockTimerAudio();
   if(!audioCtx)return;
-  const base=audioCtx.currentTime+.025;
+  const base=audioCtx.currentTime+.06;
   // Trois doubles tonalités, plus longues et plus présentes que le signal précédent.
   for(let i=0;i<3;i++){
    for(const hz of [740,1040]){
-    const o=audioCtx.createOscillator(),g=audioCtx.createGain(),at=base+i*.34;
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain(),at=base+i*.52;
     o.type='square';o.frequency.value=hz;
     g.gain.setValueAtTime(.0001,at);
-    g.gain.linearRampToValueAtTime(.095,at+.025);
-    g.gain.setValueAtTime(.095,at+.19);
-    g.gain.exponentialRampToValueAtTime(.0001,at+.27);
-    o.connect(g);g.connect(audioCtx.destination);o.start(at);o.stop(at+.29);
+    g.gain.linearRampToValueAtTime(.16,at+.025);
+    g.gain.setValueAtTime(.16,at+.29);
+    g.gain.exponentialRampToValueAtTime(.0001,at+.38);
+    o.connect(g);g.connect(audioCtx.destination);o.start(at);o.stop(at+.40);
    }
   }
  }catch(e){}
@@ -1586,7 +1586,7 @@ function v605AttemptsFor(d){const rows=[];for(const def of defs){const c=data.ch
 function v605DayChallenges(d){const rows=v605AttemptsFor(d);return rows.length?'<div class="card"><h2>Défis essayés ce jour</h2>'+rows.map(x=>'<div class="row"><b>'+esc6(x.name)+'</b><span>'+labelUnit(x.value,x.unit)+'</span></div>').join('')+'<p class="mini">Essais enregistrés, même lorsque l’objectif n’est pas atteint.</p></div>':''}
 function enhanceToday(){const app=document.querySelector('#app');app?.insertAdjacentHTML('beforeend',v605DayChallenges(date));const i=v6InstructionAt(date);if(i){const app=document.querySelector('#app');app.insertAdjacentHTML('beforeend','<div class="card v6-instruction"><b>Semaine d’instruction</b><p class="mini">Programme normal suspendu pendant cette période. Séances courtes facultatives, adaptables.</p>'+i.sessions.map((x,j)=>'<button data-v6-instruction-open="'+j+'">'+esc6(x.name)+' · '+x.minutes+' min</button>').join('')+'</div>')}}
 function enhanceProgress(){const attempts=[];for(const def of defs){for(const a of data.challengesV6?.[def[0]]?.attempts||[])attempts.push({date:a.date,name:def[1],value:a.value,unit:def[2]})}for(const c of data.challengesV6?.custom||[]){for(const a of c.attempts||[])attempts.push({date:a.date,name:c.name,value:a.value,unit:c.unit})}attempts.sort((a,b)=>b.date.localeCompare(a.date));if(attempts.length){document.querySelector('#app')?.insertAdjacentHTML('beforeend','<div class="card"><h2>Historique des essais de défis</h2>'+attempts.map(a=>'<div class="row"><span>'+esc6(a.date)+' · '+esc6(a.name)+'</span><b>'+labelUnit(a.value,a.unit)+'</b></div>').join('')+'</div>')}const done=Object.entries(data.entries).filter(([k,v])=>v?.done);const start=isoOf(monday(now())),previous=plus(start,-7),thisW=done.filter(([k])=>k.slice(0,10)>=start&&k.slice(0,10)<=plus(start,6)),prevW=done.filter(([k])=>k.slice(0,10)>=previous&&k.slice(0,10)<start);const names=thisW.map(([k])=>sessions.find(s=>s.id===k.split('|')[1])?.name||k.split('|')[1]);const txt='Cette semaine : '+thisW.length+' activité(s) terminée(s), contre '+prevW.length+' la semaine précédente.';const app=document.querySelector('#app');const hero=app.querySelector('.hero');hero?.insertAdjacentHTML('afterend','<div class="card"><h2>Bilan global de la semaine</h2><p>'+esc6(txt)+'</p><p class="mini">'+(names.length?names.map(esc6).join(' · '):'Aucune activité terminée pour le moment.')+'</p></div>')}
-function enhanceSession(){const s=sessions.find(x=>x.id===openId);if(!s||!['strength','strength39'].includes(s.kind)&&!['push','pull','legs','push39','pull39','upper39','legs39'].includes(s.id))return;const app=document.querySelector('#app');const exercises=app.querySelectorAll('.exercise');if(!exercises.length)return;exercises.forEach((el,i)=>{if(el.querySelector('[data-v6-history]'))return;const bar=document.createElement('div');bar.className='v6-compact';bar.innerHTML='<button data-v6-history="'+i+'">Historique récent</button><button data-v6-setremove="'+i+'">− Série</button>';el.append(bar)});const ex0=app.querySelector('.exercise');ex0?.insertAdjacentHTML('beforebegin','<div class="card"><b>Séance en cours</b><p class="mini">Toutes les séries restent visibles et modifiables. Tu peux consulter l’historique et adapter ta séance.</p><div id="v6-current-exercise" class="v6-record"></div></div>');updateNext();prefillLatest(s)}
+function enhanceSession(){const s=sessions.find(x=>x.id===openId);if(!s||!['strength','strength39'].includes(s.kind)&&!['push','pull','legs','push39','pull39','upper39','legs39'].includes(s.id))return;const app=document.querySelector('#app');const exercises=app.querySelectorAll('.exercise');if(!exercises.length)return;exercises.forEach((el,i)=>{if(el.querySelector('[data-v6-history]'))return;const bar=document.createElement('div');bar.className='v6-compact';bar.innerHTML='<button data-v6-history="'+i+'">Historique récent</button>';el.append(bar)});const ex0=app.querySelector('.exercise');ex0?.insertAdjacentHTML('beforebegin','<div class="card"><b>Séance en cours</b><p class="mini">Toutes les séries restent visibles et modifiables. Tu peux consulter l’historique et adapter ta séance.</p><div id="v6-current-exercise" class="v6-record"></div></div>');updateNext();prefillLatest(s)}
 function updateNext(){const arr=[...document.querySelectorAll('#app .exercise')];const el=document.querySelector('#v6-current-exercise');if(!el||!arr.length)return;let index=arr.findIndex(x=>!x.textContent.includes('Exercice terminé'));if(index<0)index=0;el.textContent='Exercice actuel : '+(arr[index].querySelector('b')?.textContent||'')+' · Suivant : '+(arr[index+1]?.querySelector('b')?.textContent||'Fin de séance')}
 function prefillLatest(s){
  const current=get(s.id,date);
@@ -1632,7 +1632,10 @@ if(b.hasAttribute('data-v6-instruction-open')){openInstruction(+b.dataset.v6Inst
 if(b.hasAttribute('data-v6-inst-back')){render();return}
 if(b.hasAttribute('data-v6-inst-save')){saveInstruction(+b.dataset.v6InstSave);render();return}
 if(b.hasAttribute('data-v6-inst-done')){const j=+b.dataset.v6InstDone;saveInstruction(j);const p=v6InstructionAt(date);data.entries[date+'|instructionV6_'+j]={done:true,activityMinutes:String(p.sessions[j].minutes),notes:p.sessions[j].exercises.join(' · '),updatedAt:new Date().toISOString()};persist();render();return}
-if(b.hasAttribute('data-v6-history')){const i=+b.dataset.v6History,entries=Object.entries(data.entries).filter(([k,v])=>k.endsWith('|'+openId)&&k.slice(0,10)<date&&v.done&&v.sets?.[i]).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,3);alert(entries.length?entries.map(([k,v])=>k.slice(0,10)+' : '+Object.values(v.sets[i]).map(x=>(x.kg||'—')+' kg × '+(x.reps||'—')).join(' / ')).join('\n'):'Aucun historique terminé pour cet exercice.');return}
+if(b.hasAttribute('data-v6-history')){
+ const ex=activeEx(openId)[Number(b.dataset.v6History)];
+ const recent=history81(openId,ex?.[0],date).slice(0,3);
+ alert(recent.length?recent.map(h=>h.date+' · '+h.rows.map(r=>(r.kg?r.kg+' kg × ':'')+r.reps).join(' / ')).join('\n'):'Aucun historique pour cet exercice.');return}
 if(b.hasAttribute('data-v6-setremove')){const i=+b.dataset.v6Setremove;const s=sessions.find(x=>x.id===openId);if(!s)return;saveDraft();const v=get(openId,date);const base=activeEx(openId)[i]?.[2]||3;v.extraSets ||= [];v.extraSets[i]=Math.max(-base+1,(v.extraSets[i]||0)-1);set(openId,date,v);render();return}
 if(b.hasAttribute('data-v6-exremove')){alert('La suppression permanente d’un exercice nécessite une modification du programme dans Données. Les séries saisies sont conservées.');return}
 if(b.hasAttribute('data-v6-exup')||b.hasAttribute('data-v6-exdown')){alert('Réorganisation des exercices : fonction en préparation pour préserver l’association avec les séries historiques.');return}
@@ -2248,7 +2251,209 @@ header=function(){return v8PreviousHeader().replace(/V7\.5\b/g,'V8')};
 const v8PreviousRender=render;
 render=function(){
  v8PreviousRender();
- document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.0.1 · Stockage local'});
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.1 · Stockage local'});
+};
+
+// V8.1 — a day owns its exercise snapshot and its draft.
+const planBefore81=scheduledIds, allBefore81=all, exBefore81=activeEx;
+function state81(){
+ const state=data.v81 ||= {};
+ state.pauses ||= [];state.templates ||= {};state.originalDays ||= {};
+ return state;
+}
+function paused81(day){return state81().pauses.some(p=>p.start<=day&&day<=p.end)}
+scheduledIds=function(day){return paused81(day)?[]:Object.hasOwn(state81().originalDays,day)?data.schedule[day]:planBefore81(day)};
+all=function(day){
+ if(paused81(day))return [];
+ if(Object.hasOwn(state81().originalDays,day))
+  return scheduledIds(day).map(id=>sessions.find(s=>s.id===id)).filter(Boolean);
+ return allBefore81(day);
+};
+function writeDay81(day,ids){
+ const backups=state81().originalDays;
+ if(!Object.hasOwn(backups,day))backups[day]=Object.hasOwn(data.schedule,day)?[...data.schedule[day]]:null;
+ data.schedule[day]=[...new Set(ids)];
+}
+function restore81(day){
+ const backups=state81().originalDays;
+ if(!Object.hasOwn(backups,day))return;
+ if(backups[day]===null)delete data.schedule[day];else data.schedule[day]=backups[day];
+ delete backups[day];
+}
+function validDay81(day){return /^\d{4}-\d{2}-\d{2}$/.test(day)&&!isNaN(Date.parse(day))&&new Date(day+'T12:00:00Z').toISOString().slice(0,10)===day}
+function dayEditor81(){
+ const ids=scheduledIds(date).filter(id=>!get(id,date).done);
+ const option=(id,name)=>'<option value="'+esc(id)+'">'+esc(name)+'</option>';
+ const choices=V75_CATALOG.map(([group,items])=>'<optgroup label="'+esc(group)+'">'+items.map(([id,name])=>option(id,name)).join('')+'</optgroup>').join('');
+ return '<details class="card"><summary><b>Modifier ma journée</b></summary><label>Activité à ajouter ou de remplacement<select id="v81-new">'+choices+'</select></label><button data-day81="add">Ajouter</button>'+
+ (ids.length?'<label>Séance prévue<select id="v81-old">'+ids.map(id=>option(id,sessions.find(s=>s.id===id)?.name||id)).join('')+'</select></label><button data-day81="remove">Retirer</button><button data-day81="replace">Remplacer</button><label>Déplacer au<input type="date" id="v81-dest"></label><button data-day81="move">Déplacer</button><button data-day81="rest">Mettre en repos</button>':'')+
+ (Object.hasOwn(state81().originalDays,date)?'<button data-day81="restore">Rétablir le planning initial</button>':'')+'</details>';
+}
+function pausePanel81(){
+ return '<details class="card"><summary><b>Pause maladie</b></summary><label>Du<input id="v81-from" type="date" value="'+date+'"></label><label>Au inclus<input id="v81-to" type="date" value="'+date+'"></label><button data-day81="pause">Enregistrer la pause</button>'+
+ state81().pauses.map((p,i)=>'<div class="row">'+esc(p.start)+' → '+esc(p.end)+' <button data-end81="'+i+'">Annuler la pause</button></div>').join('')+'</details>';
+}
+function editDay81(action,old,next,dest){
+ const ids=scheduledIds(date), keep=ids.filter(id=>id!==old);
+ if(action==='restore'){restore81(date);return true}
+ if(action==='add'){writeDay81(date,[...ids,next]);return true}
+ if(action==='rest'){writeDay81(date,ids.filter(id=>get(id,date).done));return true}
+ if(!ids.includes(old)||get(old,date).done)return false;
+ if(action==='move'){
+  if(!validDay81(dest)||dest===date||paused81(dest)||scheduledIds(dest).includes(old)||get(old,dest).done)return false;
+  writeDay81(dest,[...scheduledIds(dest),old]);
+ }
+ if(action==='replace'&&keep.includes(next))return false;
+ writeDay81(date,action==='replace'?ids.map(id=>id===old?next:id):keep);
+ return true;
+}
+function template81(id,day){
+ const list=state81().templates[id]||[];
+ return list.filter(t=>t.day<=day).sort((a,b)=>b.day.localeCompare(a.day))[0]?.ex;
+}
+activeEx=function(id){
+ const entry=get(id,date);
+ if(id===openId&&Array.isArray(entry.exerciseSnapshot))return entry.exerciseSnapshot;
+ return template81(id,date)||exBefore81(id);
+};
+const currentBefore81=currentEx;
+currentEx=function(id,i){
+ const snapshot=id===openId?get(id,date).exerciseSnapshot:null;
+ return (snapshot||template81(id,date))?.[i]||currentBefore81(id,i);
+};
+function history81(id,name,day){
+ const ids=[id,...({pull39:['pull'],push39:['push'],legs39:['legs'],upper39:['upper']}[id]||[])];
+ const result=[];
+ for(const [key,v] of Object.entries(data.entries).sort(([a],[b])=>b.localeCompare(a))){
+  const [d,sid]=key.split('|');if(d>=day||!ids.includes(sid)||!v?.done)continue;
+  const ex=v.exerciseSnapshot||template81(sid,d)||(d>=V8_START&&V8_PROGRAMMES[sid])||V74_PROGRAMMES[sid]||EX[sid]||[];
+  const i=Object.keys(ex).find(i=>ex[i]?.[0]===name&&!v.hiddenExercises?.[i]);
+  if(i===undefined)continue;
+  const rows=Object.values(v.sets?.[i]||{}).filter(row=>row&&typeof row==='object');
+  if(rows.some(row=>Number(row.reps)>0))result.push({date:d,entry:v,rows});
+ }
+ return result;
+}
+lastExercise=function(id,i,day){return history81(id,currentEx(id,i)?.[0],day)[0]||null};
+function prepareStrength81(id){
+ const v=get(id,date);
+ if(v.done||v.v6Prefilled||Object.keys(v.sets||{}).length)return;
+ const ex=structuredClone(activeEx(id)),sets=[],extra={...v.extraSets};
+ ex.forEach((item,i)=>{
+  const prev=history81(id,item[0],date)[0];if(!prev)return;
+  sets[i]=prev.rows.map(r=>({kg:r.kg??'',reps:r.reps??'',rpe:r.rpe??''}));
+  if(template81(id,date)){
+   sets[i]=sets[i].slice(0,item[2]);extra[i]=0;
+  }else extra[i]=sets[i].length-item[2];
+ });
+ set(id,date,{sets,extraSets:extra,exerciseSnapshot:ex,v6Prefilled:true});
+}
+function strengthEditor81(){
+ const list=activeEx(openId);
+ return '<details class="card"><summary><b>Modifier les exercices et les séries</b></summary><label>Appliquer à<select id="v81-scope"><option value="day">Cette séance uniquement</option><option value="future">Cette séance et les suivantes</option></select></label><label>Exercice<select id="v81-ex">'+list.map((ex,i)=>'<option value="'+i+'">'+esc(ex[0])+'</option>').join('')+'</select></label><label>Nom à ajouter ou de remplacement<input id="v81-name" list="v81-names"></label><datalist id="v81-names">'+Object.values(V71_CATALOG).flat().map(n=>'<option value="'+esc(n)+'"></option>').join('')+'</datalist><div class="actions">'+[['add','Ajouter'],['replace','Remplacer'],['remove','Retirer'],['up','Monter'],['down','Descendre']].map(([k,n])=>'<button data-ex81="'+k+'">'+n+'</button>').join('')+'</div><label>Numéro de série<input type="number" id="v81-series" min="1" value="1"></label>'+[['more','Ajouter une série'],['less','Retirer la série'],['earlier','Monter la série'],['later','Descendre la série']].map(([k,n])=>'<button data-ex81="'+k+'">'+n+'</button>').join('')+'</details>';
+}
+function editExercise81(id,i,action,name,series,permanent){
+ const v=get(id,date),ex=structuredClone(activeEx(id)),parallel=['sets','extraSets','finishedExercises','hiddenExercises','exerciseModes'];
+ if(!ex[i]||v.done)return false;
+ const columns=Object.fromEntries(parallel.map(k=>[k,ex.map((_,j)=>v[k]?.[j]??null)]));
+ const all=[ex,...Object.values(columns)],pos=action==='up'?i-1:i+1;
+ if(action==='up'||action==='down'){
+  if(!ex[pos])return false;
+  for(const a of all)[a[i],a[pos]]=[a[pos],a[i]];
+ }else if(action==='remove'){
+  if(ex.length===1)return false;
+  for(const a of all)a.splice(i,1);
+ }else if(action==='add'||action==='replace'){
+  if(!name)return false;
+  const known=Object.values(EX).flat().find(x=>x?.[0]===name);
+  const item=structuredClone(known||[name,'Exercice personnalisé',3,'',12,90]);
+  const j=action==='add'?ex.length:i;ex[j]=item;for(const a of Object.values(columns))a[j]=null;
+ }else{
+  const count=ex[i][2]+Number(columns.extraSets[i]||0);
+  const rows=Array.from({length:count},(_,j)=>columns.sets[i]?.[j]||{kg:ex[i][3],reps:ex[i][4],rpe:''});
+  if(action==='more')rows.push({kg:'',reps:'',rpe:''});
+  else if(series<0||series>=count||!Number.isInteger(series))return false;
+  else if(action==='less'){if(count===1)return false;rows.splice(series,1)}
+  else {const k=action==='earlier'?series-1:series+1;if(!rows[k])return false;[rows[k],rows[series]]=[rows[series],rows[k]]}
+  columns.sets[i]=rows;columns.extraSets[i]=rows.length-ex[i][2];
+ }
+ if(permanent){
+  const list=state81().templates[id] ||= [];
+  const model=ex.flatMap((item,j)=>columns.hiddenExercises[j]?[]:[[item[0],item[1],item[2]+Number(columns.extraSets[j]||0),...item.slice(3)]]);
+  state81().templates[id]=[...list.filter(t=>t.day!==date),{day:date,ex:model}];
+ }
+ set(id,date,{...columns,exerciseSnapshot:ex,v6Prefilled:true});return true;
+}
+function records81(){
+ const c=data.challengesV6;
+ const plank=defs.find(d=>d[0]==='plank');
+ plank[3]=[120,180,240,300,360,420,480,540,600];
+ if(state81().recordsApplied)return;
+ for(const def of defs){
+  const r=c[def[0]];if(!r)continue;
+  r.levels ||= [];r.attempts ||= [];
+  if(def[0]==='plank'){
+   const best=Math.max(0,...r.attempts.map(a=>Number(a.value)||0),r.levels.includes(0)?300:0);
+   for(let i=0;i<plank[3].length;i++)if(best>=plank[3][i]&&!r.levels.includes(i))r.levels.push(i);
+  }
+ }
+ state81().recordsApplied=true;persist();
+}
+records81();
+const beforeSession81=renderSession;
+renderSession=function(){
+ const strength=sessions.find(s=>s.id===openId)?.kind==='strength';
+ if(strength)prepareStrength81(openId);
+ let h=beforeSession81();if(!strength||get(openId,date).done)return h;
+ return h.replace('<button data-back="1">← Retour</button>','<button data-back="1">← Retour</button>'+strengthEditor81());
+};
+const beforeSettings81=renderSettings;
+renderSettings=function(){return pausePanel81()+beforeSettings81()};
+const beforeToday81=renderToday;
+renderToday=function(){
+ if(paused81(date))return dayButtons()+'<div class="card"><h2>Pause maladie</h2><p>Aucune séance à rattraper.</p></div>'+pausePanel81()+'<button data-shift="-7">‹ Semaine</button><button data-shift="7">Semaine ›</button>';
+ const drafts=Object.keys(data.entries).filter(k=>k.startsWith(date+'|')&&!data.entries[k]?.done);
+ const draftsUI=drafts.length?'<details class="card"><summary>Séances non effectuées</summary>'+drafts.map(k=>'<div class="row">'+esc(sessions.find(s=>s.id===k.slice(11))?.name||k.slice(11))+'<button data-delete81="'+esc(k.slice(11))+'">Supprimer</button></div>').join('')+'</details>':'';
+ return dayEditor81()+beforeToday81()+draftsUI;
+};
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;
+ const val=id=>document.getElementById(id)?.value||'';
+ if(b.dataset.delete81){
+  const id=b.dataset.delete81,key=date+'|'+id;
+  if(!data.entries[key]||data.entries[key].done||!confirm('Supprimer cette séance non effectuée et son brouillon ?'))return;
+  writeDay81(date,scheduledIds(date).filter(x=>x!==id));delete data.entries[key];
+  if(data.v604Added?.[date])data.v604Added[date]=data.v604Added[date].filter(x=>x!==id);
+ }else if(b.dataset.day81){
+  const a=b.dataset.day81;
+  if(a==='pause'){
+   const start=val('v81-from'),end=val('v81-to');
+   if(!validDay81(start)||!validDay81(end)||end<start){alert('Vérifie les dates de la pause.');return}
+   if(!state81().pauses.some(p=>p.start===start&&p.end===end))state81().pauses.push({start,end});
+  }else{
+   if(['rest','remove','replace','restore'].includes(a)&&!confirm('Confirmer la modification du planning de cette journée ?'))return;
+   if(!editDay81(a,val('v81-old'),val('v81-new'),val('v81-dest'))){alert('Choisis une autre séance ou une date disponible.');return}
+  }
+ }else if(b.dataset.end81!==undefined){state81().pauses.splice(Number(b.dataset.end81),1)}
+ else if(b.dataset.ex81){
+  saveDraft();const a=b.dataset.ex81;
+  if(!editExercise81(openId,+val('v81-ex'),a,val('v81-name').trim(),Number(val('v81-series'))-1,val('v81-scope')==='future')){alert('Vérifie le nom, la série ou la position choisie.');return}
+ }else return;
+ persist();render();
+},true);
+const detailsBefore81=renderSession;
+renderSession=function(){
+ let h=detailsBefore81();
+ if(!openId||sessions.find(s=>s.id===openId)?.kind!=='strength')return h;
+ // Keep one editing route so every structural change has an explicit scope.
+ return h.replace(/<div class="card"><h3>Adapter les exercices<\/h3>[\s\S]*?data-v7-program="1">[^<]*<\/button><\/div>/g,'')
+ .replace(/<button[^>]+(?:data-addset|data-mt534-remove-ex|data-mt534-minus-set)="\d+"[^>]*>[^<]*<\/button>/g,'');
+};
+const beforeChallenges81=challengeUI;
+challengeUI=function(){
+ const rows=defs.flatMap(d=>(data.challengesV6[d[0]]?.attempts||[]).map(a=>({day:a.date,name:d[1],value:labelUnit(a.value,d[2]),ok:d[4]==='min'?(!d[3][a.level]||a.value<=d[3][a.level]):a.value>=d[3][a.level]})));
+ rows.sort((a,b)=>b.day.localeCompare(a.day));
+ return beforeChallenges81()+'<details class="card"><summary>Historique des tentatives</summary>'+rows.map(a=>'<p>'+esc(a.day)+' · '+esc(a.name)+' · '+esc(a.value)+' · '+(a.ok?'Réussi':'Objectif à atteindre')+'</p>').join('')+'</details>';
 };
 
 // V7.5.4 : le nouveau type de pompes libres a son propre identifiant,
