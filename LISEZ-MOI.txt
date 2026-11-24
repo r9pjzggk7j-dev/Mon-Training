@@ -1,13 +1,10 @@
-Mon Training V8
+Mon Training V8.3
 
-Cette archive contient les fichiers à la racine du dépôt GitHub Pages.
-Base : Mon Training V7.5.5, commit 14f50e8.
+À partir du mardi 24 novembre 2026, le planning par défaut propose
+BikeErg facile (20 à 30 min), abdominaux (2 tours) et mobilité (5 min).
+La rubrique Mes étirements reste accessible sur la journée.
 
-Depuis Mon Training sur l’iPhone, exporte d’abord une sauvegarde JSON dans
-Données. Décompresse cette archive et remplace les fichiers du dépôt dans sa
-branche main. Une fois GitHub Pages déployé, rouvre Mon Training à l’adresse
-habituelle. Garde le raccourci iPhone existant.
-
-Les modèles PULL et LEGS V8 s’appliquent à partir du lundi 23 novembre 2026.
-Les trois formats BikeErg, le gainage/abdos et les pompes sont dans Ajouter
-une activité. Les mesures affichées par le BikeErg se saisissent manuellement.
+Pour mettre à jour une V8 existante, remplace index.html et sw.js à la
+racine du dépôt GitHub Pages par les fichiers de cette archive. Après
+publication, ouvre l’adresse habituelle dans le même navigateur ou avec
+le même raccourci iPhone pour retrouver les données locales.

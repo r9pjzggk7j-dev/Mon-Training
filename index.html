@@ -744,7 +744,7 @@ function renderToday39(){
  const week=`<div class="card"><div class="row"><b>Ma semaine</b><span class="mini">${m} → ${plus(m,6)}</span></div><div class="days week39">${DAYS.map((_,i)=>{const d=plus(m,i),ids=all(d),done=ids.some(s=>get(s.id,d).done);return `<button data-date="${d}" class="${d===date?'active':''}">${short[i]}<br>${d.slice(8)}<br><small>${done?'✓':ids.length?'●':'–'}</small></button>`}).join('')}</div><div class="row" style="margin-top:10px"><button data-shift="-7">‹ Semaine</button><button data-shift="7">Semaine ›</button></div></div>`;
  const ids=all(date),cards=ids.map(s=>`<button class="today-task" data-open="${s.id}"><span class="today-task-text"><b>${esc(s.name)}</b><small>${get(s.id,date).done?'✓ Terminée':'○ À faire'}</small></span><span class="today-task-action">Ouvrir ›</span></button>`).join('');
  const day=idx(date);let choices='';
- if(day===3)choices=`<div class="card"><b>Récupération — choisis</b><p class="mini">Le repos est recommandé par défaut.</p>${choose39(date,[['rest','Repos'],['bikeEasy39','BikeErg facile'],['walk39','Marche inclinée']])}</div>`;
+ if(day===3&&date<'2026-11-23')choices=`<div class="card"><b>Récupération — choisis</b><p class="mini">Le repos est recommandé par défaut.</p>${choose39(date,[['rest','Repos'],['bikeEasy39','BikeErg facile'],['walk39','Marche inclinée']])}</div>`;
  if(day===5)choices=`<div class="card"><b>Bas du corps — choisis</b>${choose39(date,[['legs39','LEGS salle'],['lower39','Mobilité + jambes']])}</div>`;
  if(day===6)choices=`<div class="card"><b>Journée libre — facultative</b><p class="mini">Le repos reste le choix par défaut.</p>${choose39(date,[['rest','Repos'],['bikeEnd39','BikeErg'],['bikeHard39','BikeErg intense'],['wod39','WOD'],['run39','Course / marche'],['push39a','Pompes'],['mob39','Mobilité'],['free39','Autre']])}</div>`;
  return week+`<div class="card"><h2>${DAYS[day]} ${date.slice(8,10)}/${date.slice(5,7)}</h2>${cards||'<p class="mini">Repos prévu. Aucune séance obligatoire.</p>'}</div>`+choices+`<div class="card"><b>Accès rapides</b><div class="choice39"><button data-quick39="stretch39">Mes étirements · 5 min</button><button data-quick39="push39a">Pompes</button><button data-quick39="mob39">Mobilité</button></div></div>`;
@@ -1986,6 +1986,7 @@ function v75BasePlan(d){
  if(d<'2026-11-03')return v75LegacyScheduled(d);
  const day=idx(d); // Lundi 0, mardi 1, ... dimanche 6.
  const base=[['push39'],['v75pompesVolume'],['pull39'],[],['upper39'],['legs39','v75pompesEndurance'],[]][day].slice();
+ if(day===1&&d>='2026-11-24')return ['bikeV8EasyTuesday','coreTuesday','mobilityTuesday'];
  if(v75IsChallengeSunday(d))base.push('v75challenge');
  return base;
 }
@@ -2197,12 +2198,28 @@ lastExercise=function(id,i,beforeDate){
  return null;
 };
 Object.assign(V8_BIKE,{
+ bikeV8EasyTuesday:['BikeErg facile — 20 à 30 min','Commence par 5 min très tranquilles, puis pédale à une allure où tu peux parler facilement. Effort de 3 à 4 sur 10.'],
  bikeV8Endurance:['BikeErg A — Endurance','45 à 60 min · résistance 3 · 70 à 80 tr/min. Commence autour de 75 tr/min.'],
  bikeV8Intervals:['BikeErg B — Fractionné','20 min : 5 min faciles, puis 6 × (45 s à 100–110 tr/min + 75 s faciles), puis 3 min faciles.'],
  bikeV8Performance:['BikeErg C — Performance','20 min · résistance 3 · 88 à 92 tr/min. Vise environ 90 tr/min sur la séance.']
 });
 for(const [id,[name]] of Object.entries(V8_BIKE))sessions.push({id,name,day:-1,kind:'bike'});
 V75_CATALOG[1][1].unshift(...Object.entries(V8_BIKE).map(([id,[name]])=>[id,name]));
+const tuesdayActivities=[
+ {id:'coreTuesday',name:'Abdominaux — 2 tours',day:-1,kind:'custom39'},
+ {id:'mobilityTuesday',name:'Mobilité — 5 min',day:-1,kind:'custom39'}
+];
+sessions.push(...tuesdayActivities);
+V75_CATALOG[3][1].push(...tuesdayActivities.map(({id,name})=>[id,name]));
+CUSTOM39.coreTuesday=[
+ ['Planche sur les coudes — 30 à 45 s',30],
+ ['Crunchs contrôlés — 8 à 12, si bien tolérés',0]
+];
+CUSTOM39.mobilityTuesday=[
+ ['Cheville vers le mur, talon au sol — 8 par côté',0],
+ ['Rotation du haut du dos sur le flanc — 6 par côté',0],
+ ['Étirement doux du mollet, facultatif — 30 s par côté',30]
+];
 const v8Core={id:'v8core',name:'Gainage / Abdos',day:-1,kind:'custom39'};
 sessions.push(v8Core);
 CUSTOM39.v8core=[
@@ -2238,6 +2255,7 @@ document.addEventListener('click',e=>{
 const v8PreviousSession=renderSession;
 renderSession=function(){
  const html=v8PreviousSession();
+ if(openId==='coreTuesday')return html.replace('<h2>Abdominaux — 2 tours</h2>','<h2>Abdominaux — 2 tours</h2><p class="mini">Prends 30 s entre les exercices et 1 min entre les tours.</p>');
  if(openId===v8Core.id)return html.replace('<h2>Gainage / Abdos</h2>','<h2>Gainage / Abdos</h2><p class="mini">15 à 25 min · 45 à 60 s de repos entre les séries.</p>');
  if(openId===v8MaxPush.id)return html.replace(/(<div class="card push-coach">)<b>[^<]*<\/b><p class="mini">[^<]*<\/p>/,'$1<b>Test maximal</b><p class="mini">Après échauffement, compte les répétitions propres réalisées sur une seule série.</p>');
  if(V8_EXTEND_POMPS.has(openId)){
@@ -2251,7 +2269,7 @@ header=function(){return v8PreviousHeader().replace(/V7\.5\b/g,'V8')};
 const v8PreviousRender=render;
 render=function(){
  v8PreviousRender();
- document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.1 · Stockage local'});
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.3 · Stockage local'});
 };
 
 // V8.1 — a day owns its exercise snapshot and its draft.
@@ -2455,6 +2473,31 @@ challengeUI=function(){
  rows.sort((a,b)=>b.day.localeCompare(a.day));
  return beforeChallenges81()+'<details class="card"><summary>Historique des tentatives</summary>'+rows.map(a=>'<p>'+esc(a.day)+' · '+esc(a.name)+' · '+esc(a.value)+' · '+(a.ok?'Réussi':'Objectif à atteindre')+'</p>').join('')+'</details>';
 };
+
+
+const options82=[['bikeV8Intervals','BikeErg B — Fractionné · 20 min'],['wod39','WOD full body'],['bikeV8Performance','BikeErg C — Performance · 20 min']];
+function regularThursday82(d){return d>='2026-11-23'&&idx(d)===3&&!paused81(d)&&!v6InstructionAt(d)&&!['free','pause'].includes(v10Vacation(d)?.mode)}
+function pick82(d,id){
+ if(!regularThursday82(d)||id!=='rest'&&!options82.some(([key])=>key===id))return;
+ const ids=scheduledIds(d);
+ const others=ids.filter(key=>!options82.some(([option])=>option===key)||get(key,d).done);
+ if(id!=='rest'&&!others.includes(id))others.push(id);
+ writeDay81(d,others);persist();
+}
+const previousToday82=renderToday;
+renderToday=function(){
+ const html=previousToday82();
+ if(!regularThursday82(date))return html;
+ const ids=scheduledIds(date);
+ const chosen=options82.find(([key])=>ids.includes(key)&&!get(key,date).done)?.[0]||'rest';
+ const buttons=[['rest','Repos'],...options82].map(([key,label])=>'<button data-cardio82="'+key+'" class="'+(chosen===key?'selected39':'')+'" aria-pressed="'+(chosen===key)+'">'+label+'</button>').join('');
+ return html+'<section class="card"><h2>Jeudi · cardio facultatif</h2><p class="mini">'+(date==='2026-11-26'?'Semaine de reprise : repos conseillé.':'Choisis selon ta récupération avant l’UPPER du vendredi.')+'</p><div class="choice39">'+buttons+'</div></section>';
+};
+document.addEventListener('click',e=>{
+ const button=e.target.closest('[data-cardio82]');
+ if(!button)return;
+ e.preventDefault();pick82(date,button.dataset.cardio82);render();
+},true);
 
 // V7.5.4 : le nouveau type de pompes libres a son propre identifiant,
 // distinct des anciens IDs exclus par le filtre de migration.
