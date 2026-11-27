@@ -1615,6 +1615,12 @@ html body main#app.mt534l-settings > .hero:not(.mt534f-home-hero) .mini{
 }
 @media(max-width:390px){html body main#app.mt534l-settings > .hero:not(.mt534f-home-hero) h1{font-size:18px!important}}
 </style><style id="v6-styles">
+.trend-chart{width:100%;height:auto;max-width:660px;display:block;margin:.5rem 0}
+.trend-chart text{fill:var(--muted,#a7b9cc);font-size:10px}
+.trend-grid{stroke:var(--line,#35495e);fill:none}
+.trend-line{fill:none;stroke:#75b5ff;stroke-width:2;stroke-linejoin:round}
+.trend-dot{fill:#75b5ff}.trend-max{fill:#ffc477;stroke:#191f26;stroke-width:1}
+
 .tabs{overflow-x:auto;justify-content:flex-start;scrollbar-width:none}.tabs button{flex:0 0 auto;min-width:68px;font-size:11px}.v6-record{color:#8cc6ff;font-weight:750}.v6-level{border:1px solid #34475d;border-radius:12px;padding:12px;margin:9px 0;background:#161f2d}.v6-metrics{display:grid;grid-template-columns:1fr 1fr;gap:9px}.v6-metrics .card{text-align:center}.v6-mini{font-size:12px;color:#b4c6dc}.v6-instruction{border-left:3px solid #3288f5;padding-left:12px}.v6-compact{display:flex;gap:8px;flex-wrap:wrap}.v6-compact button{flex:1}.v6-hidden{display:none}
 </style><script>
 /* V6 : extensions additives, conservation de mon-training-v2-local. */
@@ -2371,7 +2377,7 @@ header=function(){return v8PreviousHeader().replace(/V7\.5\b/g,'V8')};
 const v8PreviousRender=render;
 render=function(){
  v8PreviousRender();
- document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.4 · Stockage local'});
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.5 · Stockage local'});
 };
 
 // V8.1 — a day owns its exercise snapshot and its draft.
@@ -2698,6 +2704,143 @@ window.addEventListener('pageshow',refreshLocalDay);
 window.addEventListener('focus',refreshLocalDay);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshLocalDay()});
 refreshLocalDay();
+
+// Les graphiques sont calculés à partir des séances terminées et des essais existants.
+const continuousBikeIds=new Set(['bike1','bike3','bikeEnd39','bikeEasy39','bikeV8EasyTuesday','bikeV8Endurance','bikeV8Performance']);
+const intervalBikeIds=new Set(['bikeHard39','bikeV8Intervals']);
+const strengthMetrics={bench:['Développé couché · 8 répétitions','kg'],pull:['Tractions strictes','rép.']};
+const bikeMetrics={continuous:['Continu · 20 min','W'],long:['Continu · autres durées','W'],interval:['Fractionné','W'],unknown:['Format non renseigné','W']};
+let strengthMetric='bench',bikeMetric='continuous';
+const trendNumber=value=>Number(String(value??'').trim().replace(',','.'));
+const trendDisplay=value=>value.toLocaleString('fr-FR',{maximumFractionDigits:2});
+const trendExercise=name=>String(name||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const trendDate=day=>day.slice(8,10)+'/'+day.slice(5,7);
+function bikeFormat(id,entry){
+ if(entry.bikeTrendFormat==='continuous'||entry.bikeTrendFormat==='interval'||entry.bikeTrendFormat==='unknown')return entry.bikeTrendFormat;
+ if(continuousBikeIds.has(id))return 'continuous';
+ if(intervalBikeIds.has(id))return 'interval';
+ return 'unknown';
+}
+function trendData(){
+ const result={bench:[],pull:[],continuous:[],long:[],interval:[],unknown:[]};
+ for(const [key,entry] of v73ProgressRows()){
+  const [day,id]=key.split('|');
+  if(!validDay81(day)||day>todayISO())continue;
+  if(v10IsBike(id)){
+   const minutes=trendNumber(entry.minutes),value=trendNumber(entry.watts);
+   if(!Number.isFinite(minutes)||!Number.isFinite(value)||minutes<=0||value<=0)continue;
+   const format=bikeFormat(id,entry);
+   const metric=format==='continuous'&&minutes!==20?'long':format;
+   const max=metric==='continuous'&&entry.bikeTrendEffort==='max20';
+   result[metric].push({day,value,detail:trendDisplay(minutes)+' min',max});
+   continue;
+  }
+  const exercises=entry.exerciseSnapshot||template81(id,day)||(day>=V8_START&&V8_PROGRAMMES[id])||V74_PROGRAMMES[id]||EX[id]||[];
+  for(const [i,exercise] of Object.entries(exercises)){
+   if(entry.hiddenExercises?.[i])continue;
+   const name=trendExercise(exercise?.[0]);
+   const metric=name==='developpe couche'||name==='developpe couche barre'?'bench':
+    /^tractions? strictes?(?: au poids du corps)?$/.test(name)?'pull':null;
+   if(!metric)continue;
+   const values=Object.values(entry.sets?.[i]||{}).map(row=>{
+    const reps=trendNumber(row?.reps);
+    if(metric==='bench')return reps===8?trendNumber(row?.kg):0;
+    return Number.isInteger(reps)&&!trendNumber(row?.kg)?reps:0;
+   }).filter(value=>Number.isFinite(value)&&value>0);
+   if(values.length)result[metric].push({day,value:Math.max(...values),detail:'Séance'});
+  }
+ }
+ for(const attempt of data.challengesV6?.pullups?.attempts||[]){
+  const day=attempt.date,value=trendNumber(attempt.value);
+  if(validDay81(day)&&day<=todayISO()&&Number.isInteger(value)&&value>0)
+   result.pull.push({day,value,detail:'Défi'});
+ }
+ return result;
+}
+function trendWeeks(rows,today){
+ const last=isoOf(monday(today));
+ const weeks=Array.from({length:12},(_,i)=>({day:plus(last,7*(i-11)),rows:[]}));
+ const weekByDate=new Map(weeks.map(week=>[week.day,week]));
+ for(const row of rows)weekByDate.get(isoOf(monday(row.day)))?.rows.push(row);
+ for(const week of weeks){
+  week.rows.sort((a,b)=>b.value-a.value||b.day.localeCompare(a.day));
+  week.best=week.rows[0];
+ }
+ return weeks;
+}
+function trendChart(weeks,label,unit){
+ const points=weeks.flatMap(({best,rows},index)=>[
+  ...(best?[{...best,index,best:true}]:[]),
+  ...rows.filter(row=>row.max&&row!==best).map(row=>({...row,index,best:false}))
+ ]);
+ if(!points.length)return '<p class="mini">Aucune mesure comparable enregistrée sur les 12 dernières semaines.</p>';
+ const values=points.map(point=>point.value);
+ const low=Math.min(...values),high=Math.max(...values);
+ const step=Math.max(1,Math.ceil((high-low)/3));
+ const bottom=Math.max(0,Math.floor(low/step)*step-(low===high?step:0));
+ const top=Math.max(bottom+3*step,Math.ceil(high/step)*step);
+ const x=i=>48+i*30;
+ const y=value=>144-120*(value-bottom)/(top-bottom);
+ const grid=Array.from({length:4},(_,i)=>{
+  const value=bottom+i*(top-bottom)/3,at=y(value);
+  return `<path class="trend-grid" d="M48 ${at}H378"/><text x="42" y="${at+3}" text-anchor="end">${esc(trendDisplay(value))}</text>`;
+ }).join('');
+ const dates=weeks.map(({day},i)=>i%2===0||i===11
+  ?`<text x="${x(i)}" y="168" text-anchor="middle">${trendDate(day)}</text>`:'').join('');
+ const line=weeks.map(({best},i)=>best?`${i&&weeks[i-1].best?'L':'M'}${x(i)} ${y(best.value)}`:'').join(' ');
+ const dots=points.map(point=>{
+  const px=x(point.index),py=y(point.value);
+  const title=`<title>${trendDate(point.day)} · ${esc(trendDisplay(point.value))} ${esc(unit)}${point.max?' · À fond':''}</title>`;
+  return point.max?`<rect class="trend-max" x="${px-4}" y="${py-4}" width="8" height="8" transform="rotate(45 ${px} ${py})">${title}</rect>`:
+   `<circle class="trend-dot" cx="${px}" cy="${py}" r="4">${title}</circle>`;
+ }).join('');
+ return `<svg class="trend-chart" viewBox="0 0 400 176" role="img" aria-label="${esc(label)} sur 12 semaines, en ${esc(unit)}">
+  ${grid}${dates}<path class="trend-line" d="${line}"/>${dots}</svg>`;
+}
+function trendPanel(title,field,metrics,selected,rows,today){
+ const [label,unit]=metrics[selected],weeks=trendWeeks(rows,today);
+ const options=Object.entries(metrics).map(([key,[name]])=>
+  `<option value="${key}" ${key===selected?'selected':''}>${esc(name)}</option>`).join('');
+ const recent=weeks.flatMap(week=>week.rows).sort((a,b)=>b.day.localeCompare(a.day));
+ const best=[...weeks].reverse().find(week=>week.best)?.best;
+ const description=field==='strength'?'Meilleure mesure par semaine. Les tractions incluent les essais du défi Tractions strictes.':
+  'Meilleurs watts moyens par semaine. Les losanges signalent les 20 minutes déclarées à fond.';
+ return `<section class="card"><h2>${title}</h2><label>Mesure<select data-trend="${field}">${options}</select></label>
+  <p class="mini">${description} · 12 dernières semaines</p>
+  ${best?`<p><b>${trendDisplay(best.value)} ${unit}</b> · dernière semaine renseignée</p>`:''}
+  ${trendChart(weeks,label,unit)}
+  ${recent.length?`<details><summary>Mesures enregistrées</summary>
+   ${recent.map(row=>`<div class="row"><span>${trendDate(row.day)} · ${row.detail}${row.max?' · À fond':''}</span><b>${trendDisplay(row.value)} ${unit}</b></div>`).join('')}</details>`:''}</section>`;
+}
+const previousProgress85=renderProgress;
+renderProgress=function(){
+ const rows=trendData(),today=todayISO();
+ return trendPanel('Force','strength',strengthMetrics,strengthMetric,rows[strengthMetric],today)+
+  trendPanel('Endurance · BikeErg','bike',bikeMetrics,bikeMetric,rows[bikeMetric],today)+previousProgress85();
+};
+document.addEventListener('change',e=>{
+ const select=e.target,field=select.dataset.trend;
+ if(field==='strength'&&Object.hasOwn(strengthMetrics,select.value))strengthMetric=select.value;
+ else if(field==='bike'&&Object.hasOwn(bikeMetrics,select.value))bikeMetric=select.value;
+ else return;
+ render();
+ document.querySelector(`[data-trend="${field}"]`)?.focus({preventScroll:true});
+});
+const previousSession85=renderSession;
+renderSession=function(){
+ const html=previousSession85();
+ if(!v10IsBike(openId))return html;
+ const entry=get(openId,date),format=bikeFormat(openId,entry);
+ const controls=`<label>Format du BikeErg<select data-field="bikeTrendFormat">
+  <option value="unknown" ${format==='unknown'?'selected':''}>Non renseigné</option>
+  <option value="continuous" ${format==='continuous'?'selected':''}>Continu</option>
+  <option value="interval" ${format==='interval'?'selected':''}>Fractionné</option>
+  </select></label><label>Effort<select data-field="bikeTrendEffort">
+  <option value="">Séance habituelle</option>
+  <option value="max20" ${entry.bikeTrendEffort==='max20'?'selected':''}>20 minutes en continu à fond</option>
+  </select></label>`;
+ return html.replace(/<label>[^<]*<textarea data-field="notes"/,start=>controls+start);
+};
 
 // V7.5.4 : le nouveau type de pompes libres a son propre identifiant,
 // distinct des anciens IDs exclus par le filtre de migration.

@@ -1,16 +1,20 @@
-Mon Training V8.4
+Mon Training V8.5
 
-- Tractions strictes de 12 à 26, par paliers de 2.
-- Chaise murale de 00:30 à 03:00, par paliers de 00:30.
-- Durées des défis au format min:ss, y compris dans l’historique.
-- Signal de fin du chrono et bouton « Tester le son ».
-- Après minuit, les séances non réalisées peuvent être retirées du planning
-  ou déplacées. Le déplacement conserve le brouillon de la séance.
+L’onglet Progrès affiche deux graphiques sur les 12 dernières semaines.
+Ils utilisent les séances enregistrées et se mettent à jour à chaque saisie.
+
+Force : meilleure charge sur une série de 8 au développé couché.
+Le sélecteur permet d’afficher les tractions strictes sans lest,
+y compris les tentatives du défi Tractions strictes.
+
+Endurance : meilleurs watts moyens hebdomadaires sur le BikeErg.
+La vue par défaut compare les séances continues de 20 minutes.
+Le fractionné, les autres durées en continu et les formats non
+renseignés restent consultables dans le sélecteur. Si tu fais un
+20 minutes en continu à fond, indique-le dans le formulaire BikeErg
+pour le repérer par un losange. Aucun test n’est planifié.
 
 Avant la mise à jour, exporte une sauvegarde JSON depuis Données.
 Sur GitHub Pages, remplace index.html et sw.js à la racine du dépôt,
-puis ouvre l’adresse habituelle dans le même navigateur ou depuis le même
-raccourci iPhone. La mise à jour utilise le stockage local de la V8.
-
-Sur iPhone, teste le signal depuis le chrono. Le navigateur peut suspendre
-le son quand l’écran est verrouillé ou que l’application est en arrière-plan.
+puis ouvre l’adresse habituelle dans le même navigateur ou depuis le
+même raccourci iPhone. La V8.5 utilise le stockage local de la V8.
