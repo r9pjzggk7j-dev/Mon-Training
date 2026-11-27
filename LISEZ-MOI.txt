@@ -1,20 +1,19 @@
-Mon Training V8.5
+Mon Training V8.6
 
-L’onglet Progrès affiche deux graphiques sur les 12 dernières semaines.
-Ils utilisent les séances enregistrées et se mettent à jour à chaque saisie.
+Dans Progrès, chaque graphique affiche un mois civil complet.
+Les mesures sont reliées par une ligne. Pour changer de mois, utilise
+les flèches ou balaie horizontalement le graphique sur iPhone.
 
-Force : meilleure charge sur une série de 8 au développé couché.
-Le sélecteur permet d’afficher les tractions strictes sans lest,
-y compris les tentatives du défi Tractions strictes.
+Force : le développé couché affiche la meilleure charge par jour
+sur une série de 6 répétitions ou plus. La vue Pompes affiche le
+total des répétitions enregistrées chaque jour.
 
-Endurance : meilleurs watts moyens hebdomadaires sur le BikeErg.
-La vue par défaut compare les séances continues de 20 minutes.
-Le fractionné, les autres durées en continu et les formats non
-renseignés restent consultables dans le sélecteur. Si tu fais un
-20 minutes en continu à fond, indique-le dans le formulaire BikeErg
-pour le repérer par un losange. Aucun test n’est planifié.
+Endurance : le graphique compare les watts moyens sur les séances
+de BikeErg de 20 minutes en continu. Un losange signale une séance
+déclarée à fond. Les deux graphiques se mettent à jour avec les
+séances enregistrées.
 
 Avant la mise à jour, exporte une sauvegarde JSON depuis Données.
 Sur GitHub Pages, remplace index.html et sw.js à la racine du dépôt,
-puis ouvre l’adresse habituelle dans le même navigateur ou depuis le
-même raccourci iPhone. La V8.5 utilise le stockage local de la V8.
+puis rouvre l’adresse habituelle dans le même navigateur ou depuis
+le même raccourci iPhone pour retrouver tes données locales.

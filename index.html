@@ -1616,6 +1616,8 @@ html body main#app.mt534l-settings > .hero:not(.mt534f-home-hero) .mini{
 @media(max-width:390px){html body main#app.mt534l-settings > .hero:not(.mt534f-home-hero) h1{font-size:18px!important}}
 </style><style id="v6-styles">
 .trend-chart{width:100%;height:auto;max-width:660px;display:block;margin:.5rem 0}
+.trend-swipe{touch-action:pan-y}
+.trend-month b{text-transform:capitalize}
 .trend-chart text{fill:var(--muted,#a7b9cc);font-size:10px}
 .trend-grid{stroke:var(--line,#35495e);fill:none}
 .trend-line{fill:none;stroke:#75b5ff;stroke-width:2;stroke-linejoin:round}
@@ -2377,7 +2379,7 @@ header=function(){return v8PreviousHeader().replace(/V7\.5\b/g,'V8')};
 const v8PreviousRender=render;
 render=function(){
  v8PreviousRender();
- document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.5 · Stockage local'});
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.6 · Stockage local'});
 };
 
 // V8.1 — a day owns its exercise snapshot and its draft.
@@ -2705,127 +2707,154 @@ window.addEventListener('focus',refreshLocalDay);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshLocalDay()});
 refreshLocalDay();
 
-// Les graphiques sont calculés à partir des séances terminées et des essais existants.
+// Les graphiques utilisent les mesures des séances terminées, par jour et par mois civil.
 const continuousBikeIds=new Set(['bike1','bike3','bikeEnd39','bikeEasy39','bikeV8EasyTuesday','bikeV8Endurance','bikeV8Performance']);
 const intervalBikeIds=new Set(['bikeHard39','bikeV8Intervals']);
-const strengthMetrics={bench:['Développé couché · 8 répétitions','kg'],pull:['Tractions strictes','rép.']};
-const bikeMetrics={continuous:['Continu · 20 min','W'],long:['Continu · autres durées','W'],interval:['Fractionné','W'],unknown:['Format non renseigné','W']};
-let strengthMetric='bench',bikeMetric='continuous';
+const strengthMetrics={bench:['Développé couché · 6 répétitions ou plus','kg'],pushups:['Pompes · volume par jour','rép.']};
+let strengthMetric='bench';
+const trendMonths={strength:null,bike:null};
 const trendNumber=value=>Number(String(value??'').trim().replace(',','.'));
 const trendDisplay=value=>value.toLocaleString('fr-FR',{maximumFractionDigits:2});
 const trendExercise=name=>String(name||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const trendDate=day=>day.slice(8,10)+'/'+day.slice(5,7);
 function bikeFormat(id,entry){
- if(entry.bikeTrendFormat==='continuous'||entry.bikeTrendFormat==='interval'||entry.bikeTrendFormat==='unknown')return entry.bikeTrendFormat;
+ if(['continuous','interval','unknown'].includes(entry.bikeTrendFormat))return entry.bikeTrendFormat;
  if(continuousBikeIds.has(id))return 'continuous';
  if(intervalBikeIds.has(id))return 'interval';
  return 'unknown';
 }
 function trendData(){
- const result={bench:[],pull:[],continuous:[],long:[],interval:[],unknown:[]};
+ const result={bench:[],pushups:[],bike:[]},today=todayISO();
  for(const [key,entry] of v73ProgressRows()){
   const [day,id]=key.split('|');
-  if(!validDay81(day)||day>todayISO())continue;
+  if(!validDay81(day)||day>today)continue;
   if(v10IsBike(id)){
-   const minutes=trendNumber(entry.minutes),value=trendNumber(entry.watts);
-   if(!Number.isFinite(minutes)||!Number.isFinite(value)||minutes<=0||value<=0)continue;
-   const format=bikeFormat(id,entry);
-   const metric=format==='continuous'&&minutes!==20?'long':format;
-   const max=metric==='continuous'&&entry.bikeTrendEffort==='max20';
-   result[metric].push({day,value,detail:trendDisplay(minutes)+' min',max});
+   const value=trendNumber(entry.watts);
+   if(bikeFormat(id,entry)==='continuous'&&trendNumber(entry.minutes)===20&&Number.isFinite(value)&&value>0)
+    result.bike.push({day,value,detail:'20 min',max:entry.bikeTrendEffort==='max20'});
    continue;
+  }
+  const session=entry.push&&sessions.find(session=>session.id===id);
+  if(session?.kind==='pushups'){
+   const count=Object.values(entry.push).map(trendNumber).filter(n=>Number.isInteger(n)&&n>0).reduce((sum,n)=>sum+n,0);
+   if(count)result.pushups.push({day,value:count,detail:session.name});
   }
   const exercises=entry.exerciseSnapshot||template81(id,day)||(day>=V8_START&&V8_PROGRAMMES[id])||V74_PROGRAMMES[id]||EX[id]||[];
   for(const [i,exercise] of Object.entries(exercises)){
-   if(entry.hiddenExercises?.[i])continue;
-   const name=trendExercise(exercise?.[0]);
-   const metric=name==='developpe couche'||name==='developpe couche barre'?'bench':
-    /^tractions? strictes?(?: au poids du corps)?$/.test(name)?'pull':null;
-   if(!metric)continue;
-   const values=Object.values(entry.sets?.[i]||{}).map(row=>{
-    const reps=trendNumber(row?.reps);
-    if(metric==='bench')return reps===8?trendNumber(row?.kg):0;
-    return Number.isInteger(reps)&&!trendNumber(row?.kg)?reps:0;
-   }).filter(value=>Number.isFinite(value)&&value>0);
-   if(values.length)result[metric].push({day,value:Math.max(...values),detail:'Séance'});
+   if(entry.hiddenExercises?.[i]||!['developpe couche','developpe couche barre'].includes(trendExercise(exercise?.[0])))continue;
+   const series=Object.values(entry.sets?.[i]||{}).map(row=>({reps:trendNumber(row?.reps),kg:trendNumber(row?.kg)}))
+    .filter(row=>Number.isInteger(row.reps)&&row.reps>=6&&Number.isFinite(row.kg)&&row.kg>0)
+    .sort((a,b)=>b.kg-a.kg||b.reps-a.reps);
+   if(series.length)result.bench.push({day,value:series[0].kg,detail:series[0].reps+' répétitions'});
   }
- }
- for(const attempt of data.challengesV6?.pullups?.attempts||[]){
-  const day=attempt.date,value=trendNumber(attempt.value);
-  if(validDay81(day)&&day<=todayISO()&&Number.isInteger(value)&&value>0)
-   result.pull.push({day,value,detail:'Défi'});
  }
  return result;
 }
-function trendWeeks(rows,today){
- const last=isoOf(monday(today));
- const weeks=Array.from({length:12},(_,i)=>({day:plus(last,7*(i-11)),rows:[]}));
- const weekByDate=new Map(weeks.map(week=>[week.day,week]));
- for(const row of rows)weekByDate.get(isoOf(monday(row.day)))?.rows.push(row);
- for(const week of weeks){
-  week.rows.sort((a,b)=>b.value-a.value||b.day.localeCompare(a.day));
-  week.best=week.rows[0];
+function monthTrend(rows,month,sumDaily){
+ const [year,index]=month.split('-').map(Number);
+ const days=new Date(year,index,0,12).getDate();
+ const records=rows.filter(row=>row.day.startsWith(month+'-')).sort((a,b)=>a.day.localeCompare(b.day)||b.value-a.value);
+ const grouped=new Map();
+ for(const row of records){
+  const point=grouped.get(row.day);
+  if(!point)grouped.set(row.day,{...row});
+  else if(sumDaily)point.value+=row.value;
+  else if(row.max&&row.value===point.value)point.max=true;
  }
- return weeks;
+ return {days,records,points:[...grouped.values()]};
 }
-function trendChart(weeks,label,unit){
- const points=weeks.flatMap(({best,rows},index)=>[
-  ...(best?[{...best,index,best:true}]:[]),
-  ...rows.filter(row=>row.max&&row!==best).map(row=>({...row,index,best:false}))
- ]);
- if(!points.length)return '<p class="mini">Aucune mesure comparable enregistrée sur les 12 dernières semaines.</p>';
- const values=points.map(point=>point.value);
- const low=Math.min(...values),high=Math.max(...values);
+function trendChart({days,points,records},label,unit,month){
+ const maxRecords=records.filter(row=>row.max&&!points.some(point=>point.day===row.day&&point.max&&point.value===row.value));
+ const values=[...points,...maxRecords].map(point=>point.value);
+ const low=values.length?Math.min(...values):0,high=values.length?Math.max(...values):3;
  const step=Math.max(1,Math.ceil((high-low)/3));
  const bottom=Math.max(0,Math.floor(low/step)*step-(low===high?step:0));
  const top=Math.max(bottom+3*step,Math.ceil(high/step)*step);
- const x=i=>48+i*30;
+ const x=day=>48+(day-1)*330/(days-1);
  const y=value=>144-120*(value-bottom)/(top-bottom);
  const grid=Array.from({length:4},(_,i)=>{
   const value=bottom+i*(top-bottom)/3,at=y(value);
-  return `<path class="trend-grid" d="M48 ${at}H378"/><text x="42" y="${at+3}" text-anchor="end">${esc(trendDisplay(value))}</text>`;
+  return `<path class="trend-grid" d="M48 ${at}H378"/>${points.length?`<text x="42" y="${at+3}" text-anchor="end">${esc(trendDisplay(value))}</text>`:''}`;
  }).join('');
- const dates=weeks.map(({day},i)=>i%2===0||i===11
-  ?`<text x="${x(i)}" y="168" text-anchor="middle">${trendDate(day)}</text>`:'').join('');
- const line=weeks.map(({best},i)=>best?`${i&&weeks[i-1].best?'L':'M'}${x(i)} ${y(best.value)}`:'').join(' ');
- const dots=points.map(point=>{
-  const px=x(point.index),py=y(point.value);
+ const dates=[1,5,10,15,20,25,days].map(day=>
+  `<text x="${x(day)}" y="168" text-anchor="middle">${day}</text>`).join('');
+ const line=points.map((point,i)=>`${i?'L':'M'}${x(Number(point.day.slice(8)))} ${y(point.value)}`).join(' ');
+ const dots=[...points,...maxRecords].map(point=>{
+  const px=x(Number(point.day.slice(8))),py=y(point.value);
   const title=`<title>${trendDate(point.day)} · ${esc(trendDisplay(point.value))} ${esc(unit)}${point.max?' · À fond':''}</title>`;
   return point.max?`<rect class="trend-max" x="${px-4}" y="${py-4}" width="8" height="8" transform="rotate(45 ${px} ${py})">${title}</rect>`:
    `<circle class="trend-dot" cx="${px}" cy="${py}" r="4">${title}</circle>`;
  }).join('');
- return `<svg class="trend-chart" viewBox="0 0 400 176" role="img" aria-label="${esc(label)} sur 12 semaines, en ${esc(unit)}">
+ return `<svg class="trend-chart" viewBox="0 0 400 176" role="img" aria-label="${esc(label)}, ${esc(v73MonthLabel(month))}, en ${esc(unit)}">
   ${grid}${dates}<path class="trend-line" d="${line}"/>${dots}</svg>`;
 }
-function trendPanel(title,field,metrics,selected,rows,today){
- const [label,unit]=metrics[selected],weeks=trendWeeks(rows,today);
- const options=Object.entries(metrics).map(([key,[name]])=>
-  `<option value="${key}" ${key===selected?'selected':''}>${esc(name)}</option>`).join('');
- const recent=weeks.flatMap(week=>week.rows).sort((a,b)=>b.day.localeCompare(a.day));
- const best=[...weeks].reverse().find(week=>week.best)?.best;
- const description=field==='strength'?'Meilleure mesure par semaine. Les tractions incluent les essais du défi Tractions strictes.':
-  'Meilleurs watts moyens par semaine. Les losanges signalent les 20 minutes déclarées à fond.';
- return `<section class="card"><h2>${title}</h2><label>Mesure<select data-trend="${field}">${options}</select></label>
-  <p class="mini">${description} · 12 dernières semaines</p>
-  ${best?`<p><b>${trendDisplay(best.value)} ${unit}</b> · dernière semaine renseignée</p>`:''}
-  ${trendChart(weeks,label,unit)}
-  ${recent.length?`<details><summary>Mesures enregistrées</summary>
-   ${recent.map(row=>`<div class="row"><span>${trendDate(row.day)} · ${row.detail}${row.max?' · À fond':''}</span><b>${trendDisplay(row.value)} ${unit}</b></div>`).join('')}</details>`:''}</section>`;
+function trendPanel(title,field,metric,rows,current){
+ const month=trendMonths[field]||current;
+ const [label,unit]=field==='strength'?strengthMetrics[metric]:['BikeErg · 20 min en continu','W'];
+ const chart=monthTrend(rows,month,metric==='pushups');
+ const options=Object.entries(strengthMetrics).map(([key,[name]])=>
+  `<option value="${key}" ${key===metric?'selected':''}>${esc(name)}</option>`).join('');
+ const description=metric==='bench'?'Charge la plus lourde du jour sur une série de 6 répétitions ou plus.':
+  metric==='pushups'?'Total des répétitions par jour, toutes séries de pompes additionnées.':
+  'Meilleurs watts moyens du jour sur 20 min en continu. Le losange signale une séance à fond.';
+ return `<section class="card" data-trend-panel="${field}">
+  <h2>${title}</h2>${field==='strength'?`<label>Mesure<select data-trend="strength">${options}</select></label>`:''}
+  <div class="row trend-month"><button type="button" data-trend-month="-1" aria-label="Mois précédent">‹</button>
+   <b aria-live="polite">${esc(v73MonthLabel(month))}</b>
+   <button type="button" data-trend-month="1" aria-label="Mois suivant" ${month>=current?'disabled':''}>›</button></div>
+  <p class="mini">${description}</p>
+  <div class="trend-swipe" data-trend-swipe="${field}">${trendChart(chart,label,unit,month)}</div>
+  ${chart.records.length?`<details><summary>Mesures du mois</summary>
+   ${[...chart.records].reverse().map(row=>`<div class="row"><span>${trendDate(row.day)} · ${esc(row.detail)}${row.max?' · À fond':''}</span><b>${trendDisplay(row.value)} ${unit}</b></div>`).join('')}</details>`:
+   '<p class="mini">Aucune mesure enregistrée pour ce mois.</p>'}
+ </section>`;
 }
 const previousProgress85=renderProgress;
 renderProgress=function(){
- const rows=trendData(),today=todayISO();
- return trendPanel('Force','strength',strengthMetrics,strengthMetric,rows[strengthMetric],today)+
-  trendPanel('Endurance · BikeErg','bike',bikeMetrics,bikeMetric,rows[bikeMetric],today)+previousProgress85();
+ const rows=trendData(),current=todayISO().slice(0,7);
+ return trendPanel('Force','strength',strengthMetric,rows[strengthMetric],current)+
+  trendPanel('Endurance · BikeErg','bike','bike',rows.bike,current)+previousProgress85();
 };
 document.addEventListener('change',e=>{
- const select=e.target,field=select.dataset.trend;
- if(field==='strength'&&Object.hasOwn(strengthMetrics,select.value))strengthMetric=select.value;
- else if(field==='bike'&&Object.hasOwn(bikeMetrics,select.value))bikeMetric=select.value;
- else return;
+ if(e.target.dataset.trend!=='strength'||!Object.hasOwn(strengthMetrics,e.target.value))return;
+ strengthMetric=e.target.value;
  render();
- document.querySelector(`[data-trend="${field}"]`)?.focus({preventScroll:true});
+ document.querySelector('[data-trend="strength"]')?.focus({preventScroll:true});
 });
+function shiftTrendMonth(field,delta){
+ if(!Object.hasOwn(trendMonths,field)||![-1,1].includes(delta))return false;
+ const current=todayISO().slice(0,7);
+ const [year,month]=(trendMonths[field]||current).split('-').map(Number);
+ const next=isoOf(new Date(year,month-1+delta,1,12)).slice(0,7);
+ if(next>current)return false;
+ trendMonths[field]=next;return true;
+}
+document.addEventListener('click',e=>{
+ const button=e.target.closest('[data-trend-month]');
+ if(!button)return;
+ const field=button.closest('[data-trend-panel]').dataset.trendPanel;
+ if(!shiftTrendMonth(field,Number(button.dataset.trendMonth)))return;
+ render();
+ const current=document.querySelector(`[data-trend-panel="${field}"] [data-trend-month="${button.dataset.trendMonth}"]`);
+ if(current&&!current.disabled)current.focus({preventScroll:true});
+});
+let trendTouch=null;
+document.addEventListener('touchstart',e=>{
+ const swipe=e.target.closest('[data-trend-swipe]');
+ if(!swipe||e.touches.length!==1){trendTouch=null;return}
+ const touch=e.touches[0];
+ trendTouch={field:swipe.dataset.trendSwipe,id:touch.identifier,x:touch.clientX,y:touch.clientY};
+},{passive:true});
+document.addEventListener('touchend',e=>{
+ const start=trendTouch;trendTouch=null;
+ if(!start)return;
+ const touch=[...e.changedTouches].find(item=>item.identifier===start.id);
+ if(!touch)return;
+ const dx=touch.clientX-start.x,dy=touch.clientY-start.y;
+ if(Math.abs(dx)>=45&&Math.abs(dx)>Math.abs(dy)*1.5&&shiftTrendMonth(start.field,dx>0?-1:1))render();
+},{passive:true});
+document.addEventListener('touchcancel',()=>{trendTouch=null},{passive:true});
+
 const previousSession85=renderSession;
 renderSession=function(){
  const html=previousSession85();
