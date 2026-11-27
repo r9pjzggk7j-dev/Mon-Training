@@ -227,43 +227,36 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if(b.dataset.move){e.stopImmediatePropagation();saveDraft();const id=document.querySelector('#moveSession').value,to=document.querySelector('#moveDate').value;if(!to)return;const from=date;data.schedule[from]||=sessions.filter(s=>s.day===idx(from)).map(s=>s.id);data.schedule[to]||=sessions.filter(s=>s.day===idx(to)).map(s=>s.id);const source=data.schedule[from],target=data.schedule[to];if(from!==to){if(target.length){const swap=confirm('Le jour de destination contient déjà des séances. OK : échanger avec la première séance de ce jour. Annuler : conserver les séances existantes et ajouter celle-ci.');if(swap){const other=target.find(x=>x!==id);if(other){target.splice(target.indexOf(other),1);if(!source.includes(other))source.push(other)}}}const at=source.indexOf(id);if(at>=0)source.splice(at,1)}if(!target.includes(id))target.push(id);persist();render();return}
  if(b.dataset.resetday){e.stopImmediatePropagation();delete data.schedule[date];persist();render();return}
 },true);
-// Minuteur grand format + son optionnel. Le son dépend des restrictions iOS si écran verrouillé.
+// Safari iOS exige que resume() soit appelé pendant une interaction utilisateur.
 let audioCtx=null;
-// Le contexte audio est activé pendant un geste utilisateur (important pour Safari iOS).
 function unlockTimerAudio(){
  try{
-  audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
-  if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
-  // Impulsion inaudible pour initialiser le moteur audio sur iOS.
-  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  g.gain.value=0;o.connect(g);g.connect(audioCtx.destination);
-  o.start();o.stop(audioCtx.currentTime+.015);
- }catch(e){}
+  const Audio=window.AudioContext||window.webkitAudioContext;
+  if(!Audio)return Promise.resolve(false);
+  // Safari peut traiter le Web Audio comme un son ambiant en mode silencieux.
+  if(navigator.audioSession){try{navigator.audioSession.type='playback'}catch{}}
+  if(!audioCtx||audioCtx.state==='closed')audioCtx=new Audio();
+  return audioCtx.state==='running'?Promise.resolve(true):
+   audioCtx.resume().then(()=>audioCtx.state==='running',()=>false);
+ }catch{return Promise.resolve(false)}
 }
-function threeBeeps(){
- if(!data.soundEnabled)return;
- try{
-  unlockTimerAudio();
-  if(!audioCtx)return;
-  const base=audioCtx.currentTime+.06;
-  // Trois doubles tonalités, plus longues et plus présentes que le signal précédent.
-  for(let i=0;i<3;i++){
-   for(const hz of [740,1040]){
-    const o=audioCtx.createOscillator(),g=audioCtx.createGain(),at=base+i*.52;
-    o.type='square';o.frequency.value=hz;
-    g.gain.setValueAtTime(.0001,at);
-    g.gain.linearRampToValueAtTime(.16,at+.025);
-    g.gain.setValueAtTime(.16,at+.29);
-    g.gain.exponentialRampToValueAtTime(.0001,at+.38);
-    o.connect(g);g.connect(audioCtx.destination);o.start(at);o.stop(at+.40);
-   }
-  }
- }catch(e){}
- // La vibration n'est pas disponible sur Safari iOS ; utilisée seulement si prise en charge.
- try{if(navigator.vibrate)navigator.vibrate([160,100,160,100,220])}catch(e){}
+function timerTones(start){
+ const nodes=[];
+ for(let i=0;i<3;i++){
+  const at=start+i*.45;
+  const oscillator=audioCtx.createOscillator(),gain=audioCtx.createGain();
+  oscillator.type='triangle';oscillator.frequency.value=i===2?1040:880;
+  gain.gain.setValueAtTime(.0001,at);
+  gain.gain.exponentialRampToValueAtTime(.46,at+.025);
+  gain.gain.setValueAtTime(.46,at+.27);
+  gain.gain.exponentialRampToValueAtTime(.0001,at+.35);
+  oscillator.connect(gain);gain.connect(audioCtx.destination);
+  oscillator.onended=()=>{oscillator.disconnect();gain.disconnect()};
+  oscillator.start(at);oscillator.stop(at+.36);
+  nodes.push(oscillator);
+ }
+ return nodes;
 }
-const baseStartTimer=startTimer;
-startTimer=function(sec){try{audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume()}catch(e){}baseStartTimer(sec);const t=document.querySelector('#timer');t.classList.add('large');let already=false;const loop=()=>{if(!t.classList.contains('show'))return;const left=Math.ceil((timerEnd-Date.now())/1000);if(left<=0&&!already){already=true;threeBeeps();t.classList.remove('large')}else if(left>0)already=false;const sound=document.querySelector('#soundToggle');if(!sound){const btn=document.createElement('button');btn.id='soundToggle';btn.textContent=data.soundEnabled?'🔊 Son':'🔇 Muet';btn.onclick=()=>{data.soundEnabled=!data.soundEnabled;persist();btn.textContent=data.soundEnabled?'🔊 Son':'🔇 Muet'};t.append(btn)}requestAnimationFrame(()=>setTimeout(loop,150))};loop()};
 // Validation de série = départ automatique du repos. Le clic ne termine pas la séance.
 const oldRenderSession2=renderSession;
 renderSession=function(){let h=oldRenderSession2();return h.replace(/(<div class="setgrid">[\s\S]*?<\/div>)/g,(m)=>m+'<button class="series-validate" data-validateset="1">✓ Série validée · lancer repos</button>')};
@@ -310,17 +303,72 @@ document.addEventListener('click',e=>{
 // Couleur enregistrée par exercice ; les autres couleurs pourront être configurées après achat.
 data.bandColors ||= {};
 document.addEventListener('change',e=>{if(e.target.dataset.band){data.bandColors[e.target.dataset.band]=e.target.value;persist()}},true);
-// Affichage fixe du minuteur : pas de reconstruction du DOM toutes les 500 ms.
-let stableTimerHandle=null,stableTimerDone=false;
+// Le signal est programmé sur l'horloge audio pour ne pas dépendre du rafraîchissement du DOM.
+let stableTimerHandle=null,stableTimerTick=null,stableTimerDone=true;
+let timerAlarm=null,timerAudioRequest=0,timerSoundPending=false;
+function cancelTimerAlarm(){
+ timerAudioRequest++;
+ for(const node of timerAlarm?.nodes||[]){try{node.stop()}catch{}}
+ timerAlarm=null;timerSoundPending=false;
+}
+function scheduleTimerAlarm(){
+ cancelTimerAlarm();
+ if(!data.soundEnabled||stableTimerDone)return;
+ const request=timerAudioRequest;
+ const arm=()=>{
+  if(request!==timerAudioRequest||stableTimerDone||audioCtx?.state!=='running')return;
+  const at=audioCtx.currentTime+Math.max(.02,(timerEnd-Date.now())/1000);
+  timerAlarm={at,nodes:timerTones(at)};
+ };
+ // Appelé directement par Démarrer, ±30 s et Son activé.
+ if(audioCtx?.state==='running')arm();
+ else unlockTimerAudio().then(arm);
+}
+function finishTimerSound(){
+ if(!data.soundEnabled)return;
+ const alreadyScheduled=timerAlarm&&audioCtx?.state==='running'&&timerAlarm.at<=audioCtx.currentTime+.15;
+ if(!alreadyScheduled){
+  cancelTimerAlarm();
+  if(audioCtx?.state==='running')timerTones(audioCtx.currentTime+.02);
+  else timerSoundPending=true;
+ }
+ navigator.vibrate?.([160,100,160,100,220]);
+}
+function showTimerSoundStatus(message){
+ const status=document.querySelector('#timerSoundStatus');
+ if(status)status.textContent=message;
+}
+function stopStableTimer(){
+ clearInterval(stableTimerHandle);stableTimerHandle=null;
+ stableTimerTick=null;stableTimerDone=true;timerEnd=0;
+ cancelTimerAlarm();
+}
 startTimer=function(sec){
- clearInterval(timerInterval);clearInterval(stableTimerHandle);stopWarmup();
- unlockTimerAudio();
- timerEnd=Date.now()+Math.max(0,sec)*1000;stableTimerDone=false;
+ clearInterval(timerInterval);clearInterval(guidedInterval);stopWarmup();stopStableTimer();
+ timerEnd=Date.now()+Math.max(0,Number(sec)||0)*1000;stableTimerDone=false;
  const t=document.querySelector('#timer');t.className='timer show large';
- t.innerHTML=`<div class="timer-title" id="timerTitle">RÉCUPÉRATION</div><div id="stableClock" class="stable-clock">00:00</div><div class="timer-actions"><button data-addtime="-30">−30 s</button><button data-addtime="30">+30 s</button><button id="soundToggle" data-toggle-sound="1">${data.soundEnabled?'Son activé':'Muet'}</button><button data-test-sound="1">▶ Tester le son</button><button data-stoptimer="1">Arrêter et fermer</button></div>`;
- const tick=()=>{if(!t.classList.contains('show')){clearInterval(stableTimerHandle);return}const left=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));const clock=document.querySelector('#stableClock');if(clock)clock.textContent=`${String(Math.floor(left/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}`;if(left===0&&!stableTimerDone){stableTimerDone=true;clearInterval(stableTimerHandle);threeBeeps();t.classList.remove('large');const title=document.querySelector('#timerTitle');if(title)title.textContent='✓ TEMPS ÉCOULÉ · TERMINÉ';t.classList.add('timer-finished');const clockDone=document.querySelector('#stableClock');if(clockDone)clockDone.textContent='00:00'}};
- tick();stableTimerHandle=setInterval(tick,200);
+ t.innerHTML=`<div class="timer-title" id="timerTitle">RÉCUPÉRATION</div><div id="stableClock" class="stable-clock">00:00</div><div class="timer-actions"><button data-addtime="-30">−30 s</button><button data-addtime="30">+30 s</button><button id="soundToggle" data-toggle-sound="1">${data.soundEnabled?'Son activé':'Muet'}</button><button data-test-sound="1">▶ Tester le son</button><button data-stoptimer="1">Arrêter et fermer</button></div><small id="timerSoundStatus" role="status"></small>`;
+ stableTimerTick=()=>{
+  const left=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));
+  document.querySelector('#stableClock').textContent=`${String(Math.floor(left/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}`;
+  if(left||stableTimerDone)return;
+  stableTimerDone=true;clearInterval(stableTimerHandle);
+  finishTimerSound();t.classList.remove('large');t.classList.add('timer-finished');
+  document.querySelector('#timerTitle').textContent='✓ TEMPS ÉCOULÉ · TERMINÉ';
+  t.querySelectorAll('[data-addtime]').forEach(button=>button.disabled=true);
+  if(timerSoundPending)showTimerSoundStatus('Son suspendu par le navigateur. Touche « Tester le son » pour le réactiver.');
+  v10WakeSync();
+ };
+ stableTimerHandle=setInterval(stableTimerTick,200);
+ scheduleTimerAlarm();stableTimerTick();
 };
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState!=='visible')return;
+ stableTimerTick?.();
+ if(timerSoundPending&&audioCtx?.state==='running'&&data.soundEnabled){
+  timerSoundPending=false;timerTones(audioCtx.currentTime+.02);showTimerSoundStatus('');
+ }
+});
 // Échauffement dans le même grand minuteur, avec navigation immédiate.
 let guidedSteps=[],guidedStep=0,guidedInterval=null,guidedEnd=0;
 function showGuidedStep(){
@@ -333,17 +381,40 @@ function showGuidedStep(){
  tick();guidedInterval=setInterval(tick,200);
 }
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
- if(b.dataset.warmup){e.stopImmediatePropagation();stopWarmup();clearInterval(stableTimerHandle);const sess=sessions.find(s=>s.id===openId);guidedSteps=WARMUPS[warmupKey(sess)];guidedStep=0;showGuidedStep();return}
+ if(b.dataset.warmup){e.stopImmediatePropagation();stopWarmup();stopStableTimer();v10WakeSync();const sess=sessions.find(s=>s.id===openId);guidedSteps=WARMUPS[warmupKey(sess)];guidedStep=0;showGuidedStep();return}
  if(b.dataset.guidedNext){e.stopImmediatePropagation();guidedStep++;showGuidedStep();return}
  if(b.dataset.guidedPrev){e.stopImmediatePropagation();guidedStep=Math.max(0,guidedStep-1);showGuidedStep();return}
  if(b.dataset.stopGuided){e.stopImmediatePropagation();clearInterval(guidedInterval);document.querySelector('#timer').className='timer';return}
- if(b.dataset.toggleSound){e.stopImmediatePropagation();data.soundEnabled=!data.soundEnabled;persist();b.textContent=data.soundEnabled?'Son activé':'Muet';if(data.soundEnabled)unlockTimerAudio();return}
- if(b.dataset.testSound){e.preventDefault();e.stopImmediatePropagation();unlockTimerAudio();if(!data.soundEnabled){alert('Active le son du chronomètre pour tester le signal.');return}threeBeeps();return}
- if(b.dataset.stoptimer){
-  // Fermeture manuelle : supprimer AUSSI la classe large, dont le CSS force display:flex.
+ if(b.dataset.addtime&&stableTimerTick){
+  e.stopImmediatePropagation();
+  if(stableTimerDone)return;
+  timerEnd=Math.max(Date.now(),timerEnd+Number(b.dataset.addtime)*1000);
+  scheduleTimerAlarm();stableTimerTick();return;
+ }
+ if(b.dataset.toggleSound){
+  e.stopImmediatePropagation();data.soundEnabled=!data.soundEnabled;persist();
+  b.textContent=data.soundEnabled?'Son activé':'Muet';
+  showTimerSoundStatus('');
+  if(data.soundEnabled){
+   if(!stableTimerDone)scheduleTimerAlarm();
+   else unlockTimerAudio();
+  }else cancelTimerAlarm();
+  return;
+ }
+ if(b.dataset.testSound){
   e.preventDefault();e.stopImmediatePropagation();
-  clearInterval(timerInterval);clearInterval(stableTimerHandle);clearInterval(guidedInterval);
-  stableTimerHandle=null;timerEnd=0;stableTimerDone=true;
+  if(!data.soundEnabled){showTimerSoundStatus('Active le son pour tester le signal.');return}
+  const request=timerAudioRequest;
+  unlockTimerAudio().then(ready=>{
+   if(request!==timerAudioRequest||!data.soundEnabled)return;
+   if(ready){timerSoundPending=false;timerTones(audioCtx.currentTime+.02);showTimerSoundStatus('')}
+   else showTimerSoundStatus('Le navigateur n’a pas activé le son. Réessaie avec le minuteur ouvert.');
+  });
+  return;
+ }
+ if(b.dataset.stoptimer){
+  e.preventDefault();e.stopImmediatePropagation();
+  clearInterval(timerInterval);clearInterval(guidedInterval);stopStableTimer();v10WakeSync();
   const timerEl=document.querySelector('#timer');
   timerEl.className='timer';timerEl.innerHTML='';
   return;
@@ -741,7 +812,7 @@ const legacyToday539=renderToday;
 function choose39(d,options){return `<div class="choice39">${options.map(([id,label])=>`<button data-choose39="${id}" data-choosedate39="${d}" class="${plan39(d).includes(id)?'selected39':''}">${esc(label)}</button>`).join('')}</div>`}
 function renderToday39(){
  const m=isoOf(monday(date));
- const week=`<div class="card"><div class="row"><b>Ma semaine</b><span class="mini">${m} → ${plus(m,6)}</span></div><div class="days week39">${DAYS.map((_,i)=>{const d=plus(m,i),ids=all(d),done=ids.some(s=>get(s.id,d).done);return `<button data-date="${d}" class="${d===date?'active':''}">${short[i]}<br>${d.slice(8)}<br><small>${done?'✓':ids.length?'●':'–'}</small></button>`}).join('')}</div><div class="row" style="margin-top:10px"><button data-shift="-7">‹ Semaine</button><button data-shift="7">Semaine ›</button></div></div>`;
+ const week=`<div class="card"><div class="row"><b>Ma semaine</b><span class="mini">${m} → ${plus(m,6)}</span></div><div class="days week39">${DAYS.map((_,i)=>{const d=plus(m,i),ids=all(d),done=Object.keys(data.entries).some(key=>key.startsWith(d+'|')&&data.entries[key]?.done);return `<button data-date="${d}" class="${d===date?'active':''}">${short[i]}<br>${d.slice(8)}<br><small>${done?'✓':ids.length?'●':'–'}</small></button>`}).join('')}</div><div class="row" style="margin-top:10px"><button data-shift="-7">‹ Semaine</button><button data-shift="7">Semaine ›</button></div></div>`;
  const ids=all(date),cards=ids.map(s=>`<button class="today-task" data-open="${s.id}"><span class="today-task-text"><b>${esc(s.name)}</b><small>${get(s.id,date).done?'✓ Terminée':'○ À faire'}</small></span><span class="today-task-action">Ouvrir ›</span></button>`).join('');
  const day=idx(date);let choices='';
  if(day===3&&date<'2026-11-23')choices=`<div class="card"><b>Récupération — choisis</b><p class="mini">Le repos est recommandé par défaut.</p>${choose39(date,[['rest','Repos'],['bikeEasy39','BikeErg facile'],['walk39','Marche inclinée']])}</div>`;
@@ -1073,7 +1144,7 @@ document.addEventListener('click',e=>{
 },true);
 // Remettre l'outil « Remplacer sans doublon » dans la vue actuelle, y compris après le 19 octobre.
 const mt534bTodayBefore=renderToday;
-renderToday=function(){let h=mt534bTodayBefore();if(date<V539_START)return h;const ids=all(date).filter(s=>!data.ignoredActivities?.[date+'|'+s.id]);
+renderToday=function(){let h=mt534bTodayBefore();if(date<V539_START)return h;const ids=all(date);
  const available=sessions.filter(s=>s.id!=='rest'&&s.kind&&s.name).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
  const panel=`<div class="card" id="mt534b-replace"><details><summary><b>Adapter mon planning · Remplacer sans doublon</b></summary><p class="mini">Modification uniquement pour le jour sélectionné. Les autres semaines ne changent pas.</p><label>Activité à remplacer<select id="mt534b-old">${ids.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></label><label>Nouvelle activité<select id="mt534b-new">${available.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></label><button type="button" class="primary" data-mt534b-replace="1" ${ids.length?'':'disabled'}>Remplacer sans doublon</button></details></div>`;
  const anchor='<div class="card"><b>Accès rapides</b>';return h.includes(anchor)?h.replace(anchor,panel+anchor):h+panel;
@@ -1282,7 +1353,7 @@ render=function(){
  if(!openId&&view==='today'){
   const hero=app.querySelector('.mt534e-home-hero');
   if(hero){
-   const selected=all(date).filter(s=>!data.ignoredActivities?.[date+'|'+s.id]);
+   const selected=all(date);
    const main=selected[0];
    const workout=main?(main.name||'').split(/[—–-]/)[0].trim():'REPOS';
    const detail=main?(main.name||'').split(/[—–]/).slice(1).join(' — ').trim(): 'RÉCUPÉRATION';
@@ -1552,8 +1623,8 @@ html body main#app.mt534l-settings > .hero:not(.mt534f-home-hero) .mini{
 const now=()=>todayISO(),num=x=>Number(x)||0;
 data.challengesV6 ||= {};data.healthV6 ||= {};data.instructionV6 ||= [];data.ignoredActivities ||= {};
 const defs=[
-['pushups','Pompes classiques','reps',[75,100],'max'],['pullups','Tractions strictes','reps',[20],'max'],['dips','Dips','reps',[20,30],'max'],['push2','Pompes en 2 minutes','reps',[60],'max'],
-['plank','Gainage planche','seconds',[300],'max'],['chair','Chaise contre un mur','seconds',[180],'max'],['hollow','Hollow hold','seconds',[120],'max'],
+['pushups','Pompes classiques','reps',[75,100],'max'],['pullups','Tractions strictes','reps',[12,14,16,18,20,22,24,26],'max'],['dips','Dips','reps',[20,30],'max'],['push2','Pompes en 2 minutes','reps',[60],'max'],
+['plank','Gainage planche','seconds',[300],'max'],['chair','Chaise contre un mur','seconds',[30,60,90,120,150,180],'max'],['hollow','Hollow hold','seconds',[120],'max'],
 ['run','Course à pied','km',[5,8,10],'max'],['runfast','Course chronométrée','seconds',[720,1500],'min',['3 km','5 km']],['ropejump','Corde à sauter','seconds',[300],'max'],
 ['bikeend','BikeErg endurance','minutes',[30,45,60],'max'],['bike10','BikeErg — distance en 10 min','meters',[0],'max'],
 ['assault1','Assault Bike — 20 calories','seconds',[60],'min'],['assault2','Assault Bike — 100 calories','seconds',[0],'min'],
@@ -1563,7 +1634,23 @@ const defs=[
 ];
 const initial=now();data.challengesV6.start ||= initial;
 const esc6=x=>esc(String(x??''));
-const labelUnit=(v,u)=>u==='seconds'?Math.floor(v/60)+' min '+String(Math.round(v%60)).padStart(2,'0')+' s':v+' '+({reps:'rép.',km:'km',meters:'m',minutes:'min'}[u]||u);
+const isTimed=unit=>unit==='seconds'||unit==='minutes';
+function labelUnit(value,unit){
+ if(isTimed(unit)){
+  const seconds=Math.round(Number(value)*(unit==='minutes'?60:1));
+  return String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
+ }
+ return value+' '+({reps:'rép.',km:'km',meters:'m'}[unit]||unit);
+}
+function challengeValue(raw,unit){
+ if(!isTimed(unit))return Number(raw);
+ const match=/^(\d+):([0-5]\d)$/.exec(raw?.trim()||'');
+ if(!match)return NaN;
+ return (Number(match[1])*60+Number(match[2]))/(unit==='minutes'?60:1);
+}
+function challengeInput(unit){
+ return isTimed(unit)?'type="text" placeholder="min:ss" aria-label="Durée en minutes et secondes (min:ss)"':'type="number" step="any" min="0"';
+}
 function info(def){const [id,name,unit,steps,mode]=def;const c=data.challengesV6[id]||{};let unlocked=0;for(let i=0;i<steps.length-1;i++){if((c.levels||[]).includes(i))unlocked=i+1;else break}return {id,name,unit,steps,mode,c,unlocked}}
 function available(){let days=Math.max(0,Math.floor((new Date(now()+'T12:00:00')-new Date(data.challengesV6.start+'T12:00:00'))/86400000));return Math.min(defs.length,1+Math.floor(days/7))}
 function challengeUI(){let count=available();let h='<div class="card"><h2>Mes défis</h2><p class="mini">Une nouvelle famille de défis chaque semaine. Les niveaux réussis et les records restent accessibles. Tous les défis peuvent être retentés.</p><p class="v6-record">'+count+' / '+defs.length+' familles déverrouillées</p></div>';
@@ -1571,10 +1658,10 @@ function challengeUI(){let count=available();let h='<div class="card"><h2>Mes d�
  if(i>=count){h+='<p class="mini">Déverrouillage hebdomadaire automatique.</p></details>';return}
  const labels=def[5]||[];for(let level=0;level<=unlocked;level++){
  const target=steps[level],done=(c.levels||[]).includes(level),attempts=(c.attempts||[]).filter(x=>x.level===level);let best=attempts.length?(mode==='min'?Math.min(...attempts.map(x=>x.value)):Math.max(...attempts.map(x=>x.value))):null;
- h+='<div class="v6-level"><b>Niveau '+(level+1)+'</b> '+(done?'<span class="ok">✓ Réussi</span>':'')+'<p class="mini">'+(labels[level]?labels[level]+' · ':'')+(target?('Objectif : '+(mode==='min'?'≤ ':'≥ ')+labelUnit(target,unit)):'Record personnel — première tentative validante')+'</p>'+(best!==null?'<p class="v6-record">Record : '+labelUnit(best,unit)+'</p>':'')+(attempts.length?'<p class="mini"><b>Dernier essai :</b> '+labelUnit(attempts[attempts.length-1].value,unit)+' · '+esc6(attempts[attempts.length-1].date)+'</p>':'<p class="mini">Aucun essai enregistré.</p>')+'<div class="v6-compact"><label>Performance <input type="number" min="0" step="any" id="v6-val-'+a.id+'-'+level+'" placeholder="'+(unit==='seconds'?'secondes':unit)+'"></label><label>Date de l’essai <input type="date" id="v6-date-'+a.id+'-'+level+'" value="'+now()+'"></label><button class="primary" data-v6-attempt="'+a.id+'|'+level+'">Enregistrer l’essai</button></div></div>';
+ h+='<div class="v6-level"><b>Niveau '+(level+1)+'</b> '+(done?'<span class="ok">✓ Réussi</span>':'')+'<p class="mini">'+(labels[level]?labels[level]+' · ':'')+(target?('Objectif : '+(mode==='min'?'≤ ':'≥ ')+labelUnit(target,unit)):'Record personnel — première tentative validante')+'</p>'+(best!==null?'<p class="v6-record">Record : '+labelUnit(best,unit)+'</p>':'')+(attempts.length?'<p class="mini"><b>Dernier essai :</b> '+labelUnit(attempts[attempts.length-1].value,unit)+' · '+esc6(attempts[attempts.length-1].date)+'</p>':'<p class="mini">Aucun essai enregistré.</p>')+'<div class="v6-compact"><label>Performance <input '+challengeInput(unit)+' id="v6-val-'+a.id+'-'+level+'"></label><label>Date de l’essai <input type="date" id="v6-date-'+a.id+'-'+level+'" value="'+now()+'"></label><button class="primary" data-v6-attempt="'+a.id+'|'+level+'">Enregistrer l’essai</button></div></div>';
  }h+='</details>'});
- h+='<div class="card"><h2>Défis personnalisés</h2><label>Nom<input id="v6-custom-name" placeholder="Mon défi"></label><label>Unité<select id="v6-custom-unit"><option value="reps">Répétitions</option><option value="seconds">Secondes</option><option value="minutes">Minutes</option><option value="km">Kilomètres</option><option value="meters">Mètres</option><option value="kg">Kilogrammes</option><option value="calories">Calories</option></select></label><label>Objectif<input id="v6-custom-goal" type="number" min="0" step="any"></label><button data-v6-custom-create="1">Créer mon défi</button></div>';
- (data.challengesV6.custom||[]).forEach((c,i)=>{h+='<div class="card"><b>'+esc6(c.name)+'</b><p class="mini">Objectif : '+labelUnit(c.goal,c.unit)+'</p><p class="v6-record">Record : '+(c.attempts?.length?labelUnit(Math.max(...c.attempts.map(x=>x.value)),c.unit):'Aucun')+'</p><label>Performance<input type="number" step="any" min="0" id="v6-custom-value-'+i+'"></label><button data-v6-custom-attempt="'+i+'">Enregistrer</button></div>'});
+ h+='<div class="card"><h2>Défis personnalisés</h2><label>Nom<input id="v6-custom-name" placeholder="Mon défi"></label><label>Unité<select id="v6-custom-unit"><option value="reps">Répétitions</option><option value="seconds">Durée (min:ss)</option><option value="km">Kilomètres</option><option value="meters">Mètres</option><option value="kg">Kilogrammes</option><option value="calories">Calories</option></select></label><label>Objectif<input id="v6-custom-goal" '+challengeInput('reps')+'></label><button data-v6-custom-create="1">Créer mon défi</button></div>';
+ (data.challengesV6.custom||[]).forEach((c,i)=>{h+='<div class="card"><b>'+esc6(c.name)+'</b><p class="mini">Objectif : '+labelUnit(c.goal,c.unit)+'</p><p class="v6-record">Record : '+(c.attempts?.length?labelUnit(Math.max(...c.attempts.map(x=>x.value)),c.unit):'Aucun')+'</p><label>Performance<input '+challengeInput(c.unit)+' id="v6-custom-value-'+i+'"></label><button data-v6-custom-attempt="'+i+'">Enregistrer</button></div>'});
  h+='<div class="card"><h2>Mon suivi personnel</h2><button data-v6-health-toggle="1">Mon suivi santé</button></div>';
  if(v6HealthOpen)h+=healthUI();return h;
 }
@@ -1621,9 +1708,9 @@ function openInstruction(j){const p=v6InstructionAt(date);if(!p)return;const x=p
 function saveInstruction(j){const p=v6InstructionAt(date);if(!p)return;const x=p.sessions[j];x.minutes=Math.max(1,num(document.querySelector('#v6-inst-min')?.value)||25);x.exercises=(document.querySelector('#v6-inst-ex')?.value||'').split('\n').map(x=>x.trim()).filter(Boolean);persist()}
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
 if(b.hasAttribute('data-v6-add')){e.preventDefault();e.stopImmediatePropagation();const id=document.querySelector('#free-select-10b')?.value;if(!sessions.some(s=>s.id===id))return;saveDraft();if(v10Vacation(date)?.mode==='free'||v6InstructionAt(date)){data.v604Added ||= {};const added=data.v604Added[date] ||= [];if(!added.includes(id))added.push(id);delete data.ignoredActivities[date+'|'+id];persist();freeMenu10B=false;render();return}const ids=[...scheduledIds(date)];if(!ids.includes(id))ids.push(id);data.schedule[date]=ids;delete data.ignoredActivities[date+'|'+id];persist();freeMenu10B=false;render();return}
-if(b.hasAttribute('data-v6-attempt')){e.preventDefault();e.stopImmediatePropagation();const [id,l]=b.dataset.v6Attempt.split('|'),level=+l,def=defs.find(x=>x[0]===id),v=Number(document.getElementById('v6-val-'+id+'-'+level)?.value);if(!def||!Number.isFinite(v)||v<=0){alert('Indique une performance supérieure à zéro.');return}const c=data.challengesV6[id]||{levels:[],attempts:[]};const attemptDate=document.getElementById('v6-date-'+id+'-'+level)?.value||now();if(!/^\d{4}-\d{2}-\d{2}$/.test(attemptDate)||attemptDate>now()){alert('Choisis une date valide, aujourd’hui ou dans le passé.');return}c.attempts.push({date:attemptDate,level,value:v});const threshold=def[3][level],ok=!threshold||(def[4]==='min'?v<=threshold:v>=threshold);if(ok&&!c.levels.includes(level))c.levels.push(level);data.challengesV6[id]=c;persist();render();return}
-if(b.hasAttribute('data-v6-custom-create')){const name=document.querySelector('#v6-custom-name')?.value.trim(),goal=num(document.querySelector('#v6-custom-goal')?.value),unit=document.querySelector('#v6-custom-unit')?.value;if(!name||goal<=0)return alert('Nom et objectif nécessaires.');data.challengesV6.custom ||= [];data.challengesV6.custom.push({name:name.slice(0,90),goal,unit,attempts:[]});persist();render();return}
-if(b.hasAttribute('data-v6-custom-attempt')){const i=+b.dataset.v6CustomAttempt,v=Number(document.querySelector('#v6-custom-value-'+i)?.value);if(!Number.isFinite(v)||v<=0)return alert('Performance invalide.');data.challengesV6.custom[i].attempts.push({date:now(),value:v});persist();render();return}
+if(b.hasAttribute('data-v6-attempt')){e.preventDefault();e.stopImmediatePropagation();const [id,l]=b.dataset.v6Attempt.split('|'),level=+l,def=defs.find(x=>x[0]===id),v=challengeValue(document.getElementById('v6-val-'+id+'-'+level)?.value,def?.[2]);if(!def||!Number.isFinite(v)||v<=0){alert(isTimed(def?.[2])?'Indique une durée supérieure à zéro au format min:ss.':'Indique une performance supérieure à zéro.');return}const c=data.challengesV6[id]||{levels:[],attempts:[]};const attemptDate=document.getElementById('v6-date-'+id+'-'+level)?.value||now();if(!/^\d{4}-\d{2}-\d{2}$/.test(attemptDate)||attemptDate>now()){alert('Choisis une date valide, aujourd’hui ou dans le passé.');return}const threshold=def[3][level];c.attempts.push({date:attemptDate,level,value:v,target:threshold});const ok=!threshold||(def[4]==='min'?v<=threshold:v>=threshold);if(ok&&!c.levels.includes(level))c.levels.push(level);data.challengesV6[id]=c;persist();render();return}
+if(b.hasAttribute('data-v6-custom-create')){const name=document.querySelector('#v6-custom-name')?.value.trim(),unit=document.querySelector('#v6-custom-unit')?.value,goal=challengeValue(document.querySelector('#v6-custom-goal')?.value,unit);if(!name||!Number.isFinite(goal)||goal<=0)return alert('Nom et objectif nécessaires.');data.challengesV6.custom ||= [];data.challengesV6.custom.push({name:name.slice(0,90),goal,unit,attempts:[]});persist();render();return}
+if(b.hasAttribute('data-v6-custom-attempt')){const i=+b.dataset.v6CustomAttempt,v=challengeValue(document.querySelector('#v6-custom-value-'+i)?.value,data.challengesV6.custom[i].unit);if(!Number.isFinite(v)||v<=0)return alert('Performance invalide.');data.challengesV6.custom[i].attempts.push({date:now(),value:v});persist();render();return}
 if(b.hasAttribute('data-v6-health-toggle')){v6HealthOpen=!v6HealthOpen;render();return}
 if(b.hasAttribute('data-v6-cig')){const c=data.healthV6.cigarettes ||= {};c[now()]=Math.max(0,(c[now()]||0)+Number(b.dataset.v6Cig));persist();render();return}
 if(b.hasAttribute('data-v6-instruction-create')){const start=document.querySelector('#v6-inst-start')?.value,end=document.querySelector('#v6-inst-end')?.value;if(!start||!end||end<start)return alert('Dates invalides.');data.instructionV6.push({start,end,sessions:instructionDefaults()});persist();render();return}
@@ -1872,8 +1959,8 @@ function v73Progress(){
  data.v7||={};const today=todayISO(),current=today.slice(0,7),month=data.v7.calendarMonth||current,st=v73MonthStats(month);
  const card=(v,label)=>`<div class="card v73-stat"><h2>${esc6(String(v))}</h2><small>${esc6(label)}</small></div>`;
  const monthRows=st.rows,attempts=[];
- for(const def of defs)for(const a of data.challengesV6?.[def[0]]?.attempts||[])if(a.date)attempts.push({date:a.date,name:def[1],value:a.value});
- for(const c of data.challengesV6?.custom||[])for(const a of c.attempts||[])if(a.date)attempts.push({date:a.date,name:c.name,value:a.value});
+ for(const def of defs)for(const a of data.challengesV6?.[def[0]]?.attempts||[])if(a.date)attempts.push({date:a.date,name:def[1],value:a.value,unit:def[2]});
+ for(const c of data.challengesV6?.custom||[])for(const a of c.attempts||[])if(a.date)attempts.push({date:a.date,name:c.name,value:a.value,unit:c.unit});
  const first=new Date(month+'-01T12:00:00'),offset=(first.getDay()+6)%7,count=new Date(+month.slice(0,4),+month.slice(5),0).getDate();
  const special=v73SpecialDays();
  const days=Array.from({length:offset},()=>'<span></span>').concat(Array.from({length:count},(_,i)=>{
@@ -1885,7 +1972,7 @@ function v73Progress(){
  const history=monthRows.filter(([k])=>k.startsWith(selected));const sp=special.get(selected);
  const selectedHtml=history.map(([k,v])=>`<button class="card row" data-history="${esc6(k)}">${esc6(sessions.find(s=>s.id===k.split('|')[1])?.name||v.activityName||k.split('|')[1])} ›</button>`).join('')+
  (sp?`<div class="card"><b>Entraînement ${esc6(sp.kind)} — ${sp.count}/${sp.total} exercices cochés</b><p class="mini">${esc6(sp.notes||'Sans commentaire')}</p>${history.length?'<small>Journée déjà comptabilisée par les séances enregistrées : aucun doublon.</small>':''}</div>`:'')+
- attempts.filter(a=>a.date===selected).map(a=>`<p class="mini">Défi : ${esc6(a.name)} — ${esc6(String(a.value))}</p>`).join('');
+ attempts.filter(a=>a.date===selected).map(a=>`<p class="mini">Défi : ${esc6(a.name)} — ${esc6(labelUnit(a.value,a.unit))}</p>`).join('');
  const all=v73ProgressRows(),allDays=new Set([...all.map(([k])=>k.slice(0,10)),...special.keys()]);
  return `<div class="card"><div class="row"><button data-v7-month="-1">‹</button><h2 style="margin:0;text-transform:capitalize">${esc6(v73MonthLabel(month))}</h2><button data-v7-month="1">›</button></div><button data-v73-today="1">Aujourd'hui</button><p class="mini">Le calendrier et le bilan concernent le même mois.</p></div>`+
  `<h2>Vue d'ensemble mensuelle</h2><div class="grid">${card(st.activities,'Activités du mois')}${card(st.days,'Jours actifs')}${card(st.muscle,'Séances de musculation')}${card(st.bikeMinutes+' min','BikeErg · durée')}${card(Math.round(st.bikeCalories)+' kcal','BikeErg · calories')}${card(st.bikeDistance+' m','BikeErg · distance')}${card(st.pompes,'Pompes · répétitions')}${card(st.runKm.toFixed(2)+' km','Course à pied')}</div>`+
@@ -2013,20 +2100,35 @@ function v75ChallengeOptions(){
  return out;
 }
 function v75ChallengeForm(){const v=get('v75challenge',date),options=v75ChallengeOptions(),selected=v.challengeAttempts||[];
- return `<button data-back="1">← Retour</button><div class="card"><h2>DÉFIS & RECORDS</h2><p class="mini">Choisis un ou deux défis actuellement débloqués dans ton onglet Défis. Les badges déjà obtenus peuvent être retentés. Chaque essai est enregistré dans les deux espaces, sans compter deux activités.</p><p class="mini">Défis disponibles : ${options.length}. Séance prévue un dimanche sur deux, déplaçable.</p><div class="row"><button type="button" data-v75-challenge-tab="1">Voir tous mes défis</button></div>${[0,1].map(i=>{const old=selected[i]||{};return `<div class="exercise"><h3>Défi ${i+1}${i===1?' · facultatif':''}</h3><label>Défi débloqué<select data-v75-chosen="${i}"><option value="">${i===0?'Choisir un défi':'Aucun deuxième défi'}</option>${options.map(o=>`<option value="${esc(o.key)}" ${old.key===o.key?'selected':''}>${esc(o.name)}${o.done?' · déjà réussi':''}</option>`).join('')}</select></label><label>Performance réalisée<input type="number" step="any" min="0" data-v75-result="${i}" value="${esc(old.value??'')}" placeholder="Saisir la valeur dans l’unité du défi"></label><small>Unité et objectif affichés dans l’onglet Défis. Un essai enregistré ne peut pas être modifié sans restaurer une sauvegarde.</small></div>`}).join('')}<label>Commentaires<textarea data-v75-challenge-notes="1">${esc(v.notes||'')}</textarea></label><button class="primary" data-v75-challenge-save="1">✓ Enregistrer la séance et les essais</button></div>`;
+ return `<button data-back="1">← Retour</button><div class="card"><h2>DÉFIS & RECORDS</h2><p class="mini">Choisis un ou deux défis actuellement débloqués dans ton onglet Défis. Les badges déjà obtenus peuvent être retentés. Chaque essai est enregistré dans les deux espaces, sans compter deux activités.</p><p class="mini">Défis disponibles : ${options.length}. Séance prévue un dimanche sur deux, déplaçable.</p><div class="row"><button type="button" data-v75-challenge-tab="1">Voir tous mes défis</button></div>${[0,1].map(i=>{const old=selected[i]||{};return `<div class="exercise"><h3>Défi ${i+1}${i===1?' · facultatif':''}</h3><label>Défi débloqué<select data-v75-chosen="${i}" ${v.done?'disabled':''}><option value="">${i===0?'Choisir un défi':'Aucun deuxième défi'}</option>${options.map(o=>`<option value="${esc(o.key)}" ${old.key===o.key?'selected':''}>${esc(o.name)}${o.done?' · déjà réussi':''}</option>`).join('')}</select></label><label>Performance réalisée<input ${challengeInput(old.unit)} data-v75-result="${i}" value="${esc(old.value==null?'':isTimed(old.unit)?labelUnit(old.value,old.unit):old.value)}" ${v.done?'readonly':''}></label><small>Unité et objectif affichés dans l’onglet Défis. Un essai enregistré ne peut pas être modifié sans restaurer une sauvegarde.</small></div>`}).join('')}<label>Commentaires<textarea data-v75-challenge-notes="1">${esc(v.notes||'')}</textarea></label><button class="primary" data-v75-challenge-save="1">✓ Enregistrer la séance et les essais</button></div>`;
 }
 const v75SessionBefore=renderSession;
 renderSession=function(){if(openId==='v75challenge')return v75ChallengeForm();return v75SessionBefore()};
+function updateChallengeInput(input,unit){
+ input.type=isTimed(unit)?'text':'number';
+ input.placeholder=isTimed(unit)?'min:ss':'';
+ input.setAttribute('aria-label',isTimed(unit)?'Durée en minutes et secondes (min:ss)':'Performance');
+ input.value='';
+}
+document.addEventListener('change',e=>{
+ const select=e.target;
+ if(select.id==='v6-custom-unit'){
+  updateChallengeInput(document.querySelector('#v6-custom-goal'),select.value);
+ }else if(select.dataset.v75Chosen!==undefined){
+  const option=v75ChallengeOptions().find(o=>o.key===select.value);
+  updateChallengeInput(document.querySelector(`[data-v75-result="${select.dataset.v75Chosen}"]`),option?.unit);
+ }
+});
 // Empêcher les anciens écouteurs de traiter ces actions après le nôtre.
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
  if(b.hasAttribute('data-v75-challenge-tab')){e.preventDefault();e.stopImmediatePropagation();openId=null;view='challenges';render();return}
  if(b.hasAttribute('data-v75-challenge-save')){
  e.preventDefault();e.stopImmediatePropagation();const opts=v75ChallengeOptions(),chosen=[];
- for(let i=0;i<2;i++){const key=document.querySelector(`[data-v75-chosen="${i}"]`)?.value;const raw=document.querySelector(`[data-v75-result="${i}"]`)?.value;if(!key)continue;const value=Number(raw);if(!Number.isFinite(value)||value<=0){alert('Indique une performance valide pour chaque défi sélectionné.');return}const opt=opts.find(o=>o.key===key);if(!opt){alert('Défi non disponible.');return}if(chosen.some(x=>x.key===key)){alert('Sélectionne deux défis différents.');return}chosen.push({key,value,name:opt.name,unit:opt.unit});}
+ for(let i=0;i<2;i++){const key=document.querySelector(`[data-v75-chosen="${i}"]`)?.value;const raw=document.querySelector(`[data-v75-result="${i}"]`)?.value;if(!key)continue;const opt=opts.find(o=>o.key===key);if(!opt){alert('Défi non disponible.');return}const value=challengeValue(raw,opt.unit);if(!Number.isFinite(value)||value<=0){alert(isTimed(opt.unit)?'Indique une durée au format min:ss.':'Indique une performance valide pour chaque défi sélectionné.');return}if(chosen.some(x=>x.key===key)){alert('Sélectionne deux défis différents.');return}chosen.push({key,value,name:opt.name,unit:opt.unit});}
  if(!chosen.length){alert('Sélectionne au moins un défi.');return}
  const old=get('v75challenge',date);if(old.done){alert('Cette séance est déjà enregistrée. Pour éviter les doublons, ne réenregistre pas les mêmes défis.');return}
  if(!confirm('Enregistrer '+chosen.length+' essai(s) et une seule séance DÉFIS & RECORDS ?'))return;
- data.challengesV6||={};for(const c of chosen){const parts=c.key.split(':');if(parts[0]==='std'){const id=parts[1],level=Number(parts[2]),def=defs.find(x=>x[0]===id);if(!def)continue;const record=data.challengesV6[id]||{levels:[],attempts:[]};record.levels||=[];record.attempts||=[];record.attempts.push({date,level,value:c.value});const target=def[3][level],ok=!target||(def[4]==='min'?c.value<=target:c.value>=target);if(ok&&!record.levels.includes(level))record.levels.push(level);data.challengesV6[id]=record;}else{const custom=data.challengesV6.custom?.[Number(parts[1])];if(custom){custom.attempts||=[];custom.attempts.push({date,value:c.value})}}}
+ data.challengesV6||={};for(const c of chosen){const parts=c.key.split(':');if(parts[0]==='std'){const id=parts[1],level=Number(parts[2]),def=defs.find(x=>x[0]===id);if(!def)continue;const record=data.challengesV6[id]||{levels:[],attempts:[]};record.levels||=[];record.attempts||=[];const target=def[3][level];record.attempts.push({date,level,value:c.value,target});const ok=!target||(def[4]==='min'?c.value<=target:c.value>=target);if(ok&&!record.levels.includes(level))record.levels.push(level);data.challengesV6[id]=record;}else{const custom=data.challengesV6.custom?.[Number(parts[1])];if(custom){custom.attempts||=[];custom.attempts.push({date,value:c.value})}}}
  set('v75challenge',date,{done:true,challengeAttempts:chosen,notes:document.querySelector('[data-v75-challenge-notes]')?.value||'',activityName:'DÉFIS & RECORDS'});openId=null;render();return;
  }
 },true);
@@ -2269,7 +2371,7 @@ header=function(){return v8PreviousHeader().replace(/V7\.5\b/g,'V8')};
 const v8PreviousRender=render;
 render=function(){
  v8PreviousRender();
- document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.3 · Stockage local'});
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.4 · Stockage local'});
 };
 
 // V8.1 — a day owns its exercise snapshot and its draft.
@@ -2280,12 +2382,19 @@ function state81(){
  return state;
 }
 function paused81(day){return state81().pauses.some(p=>p.start<=day&&day<=p.end)}
-scheduledIds=function(day){return paused81(day)?[]:Object.hasOwn(state81().originalDays,day)?data.schedule[day]:planBefore81(day)};
+function rawScheduled81(day){
+ return Object.hasOwn(state81().originalDays,day)&&Array.isArray(data.schedule[day])
+  ?data.schedule[day]:planBefore81(day);
+}
+scheduledIds=function(day){
+ if(paused81(day)||v10Vacation(day)?.mode==='pause')return [];
+ return [...new Set(rawScheduled81(day))].filter(id=>sessions.some(s=>s.id===id)&&(!v10Ignored(id,day)||get(id,day).done));
+};
 all=function(day){
- if(paused81(day))return [];
- if(Object.hasOwn(state81().originalDays,day))
+ if(paused81(day)||v10Vacation(day)?.mode==='pause')return [];
+ if(day>='2026-11-03'||Object.hasOwn(state81().originalDays,day))
   return scheduledIds(day).map(id=>sessions.find(s=>s.id===id)).filter(Boolean);
- return allBefore81(day);
+ return allBefore81(day).filter(s=>!v10Ignored(s.id,day)||get(s.id,day).done);
 };
 function writeDay81(day,ids){
  const backups=state81().originalDays;
@@ -2314,15 +2423,17 @@ function pausePanel81(){
 function editDay81(action,old,next,dest){
  const ids=scheduledIds(date), keep=ids.filter(id=>id!==old);
  if(action==='restore'){restore81(date);return true}
- if(action==='add'){writeDay81(date,[...ids,next]);return true}
+ if(action==='add'){writeDay81(date,[...ids,next]);delete data.ignoredActivities[eid(next,date)];return true}
  if(action==='rest'){writeDay81(date,ids.filter(id=>get(id,date).done));return true}
  if(!ids.includes(old)||get(old,date).done)return false;
  if(action==='move'){
   if(!validDay81(dest)||dest===date||paused81(dest)||scheduledIds(dest).includes(old)||get(old,dest).done)return false;
   writeDay81(dest,[...scheduledIds(dest),old]);
+  delete data.ignoredActivities[eid(old,dest)];
  }
  if(action==='replace'&&keep.includes(next))return false;
  writeDay81(date,action==='replace'?ids.map(id=>id===old?next:id):keep);
+ if(action==='replace')delete data.ignoredActivities[eid(next,date)];
  return true;
 }
 function template81(id,day){
@@ -2430,7 +2541,7 @@ renderSettings=function(){return pausePanel81()+beforeSettings81()};
 const beforeToday81=renderToday;
 renderToday=function(){
  if(paused81(date))return dayButtons()+'<div class="card"><h2>Pause maladie</h2><p>Aucune séance à rattraper.</p></div>'+pausePanel81()+'<button data-shift="-7">‹ Semaine</button><button data-shift="7">Semaine ›</button>';
- const drafts=Object.keys(data.entries).filter(k=>k.startsWith(date+'|')&&!data.entries[k]?.done);
+ const drafts=Object.keys(data.entries).filter(k=>k.startsWith(date+'|')&&!data.entries[k]?.done&&!v10Ignored(k.slice(11),date)&&date>=todayISO());
  const draftsUI=drafts.length?'<details class="card"><summary>Séances non effectuées</summary>'+drafts.map(k=>'<div class="row">'+esc(sessions.find(s=>s.id===k.slice(11))?.name||k.slice(11))+'<button data-delete81="'+esc(k.slice(11))+'">Supprimer</button></div>').join('')+'</details>':'';
  return dayEditor81()+beforeToday81()+draftsUI;
 };
@@ -2469,7 +2580,12 @@ renderSession=function(){
 };
 const beforeChallenges81=challengeUI;
 challengeUI=function(){
- const rows=defs.flatMap(d=>(data.challengesV6[d[0]]?.attempts||[]).map(a=>({day:a.date,name:d[1],value:labelUnit(a.value,d[2]),ok:d[4]==='min'?(!d[3][a.level]||a.value<=d[3][a.level]):a.value>=d[3][a.level]})));
+ const oldTargets={pullups:20,chair:180};
+ const rows=defs.flatMap(([id,name,unit,steps,mode])=>(data.challengesV6[id]?.attempts||[]).map(a=>{
+  const target=a.target??(a.level===0?oldTargets[id]??steps[0]:steps[a.level]);
+  const ok=!target||(mode==='min'?a.value<=target:a.value>=target);
+  return {day:a.date,name,value:labelUnit(a.value,unit),ok};
+ }));
  rows.sort((a,b)=>b.day.localeCompare(a.day));
  return beforeChallenges81()+'<details class="card"><summary>Historique des tentatives</summary>'+rows.map(a=>'<p>'+esc(a.day)+' · '+esc(a.name)+' · '+esc(a.value)+' · '+(a.ok?'Réussi':'Objectif à atteindre')+'</p>').join('')+'</details>';
 };
@@ -2481,7 +2597,7 @@ function pick82(d,id){
  if(!regularThursday82(d)||id!=='rest'&&!options82.some(([key])=>key===id))return;
  const ids=scheduledIds(d);
  const others=ids.filter(key=>!options82.some(([option])=>option===key)||get(key,d).done);
- if(id!=='rest'&&!others.includes(id))others.push(id);
+ if(id!=='rest'){if(!others.includes(id))others.push(id);delete data.ignoredActivities[eid(id,d)];}
  writeDay81(d,others);persist();
 }
 const previousToday82=renderToday;
@@ -2498,6 +2614,90 @@ document.addEventListener('click',e=>{
  if(!button)return;
  e.preventDefault();pick82(date,button.dataset.cardio82);render();
 },true);
+
+// Une séance manquée est une activité planifiée dont la journée locale est terminée.
+function missedSessions(today,selected){
+ const first=data.v84MissedSince;
+ const days=new Set();
+ for(let day=first;day&&day<today;day=plus(day,1))days.add(day);
+ if(selected<today)days.add(selected);
+ return [...days].flatMap(day=>scheduledIds(day)
+  .filter(id=>!get(id,day).done)
+  .map(id=>({day,id,name:sessions.find(s=>s.id===id).name})));
+}
+function missedPanel(today){
+ const pending=missedSessions(today,date);
+ if(!pending.length)return '';
+ return '<section class="card notice" aria-label="Séances non réalisées"><h2>Séances non réalisées</h2>'+
+  pending.map(({day,id,name})=>{
+   const key=esc(eid(id,day));
+   return `<div class="v6-level"><b>${esc(name)}</b><p class="mini">${esc(v10DateLabel(day))}</p>
+    <label>Date de report<input type="date" data-missed-date min="${today}" value="${today}"></label>
+    <div class="v6-compact"><button data-missed-move="${key}">Déplacer</button>
+    <button data-missed-remove="${key}">Supprimer</button></div></div>`;
+  }).join('')+'</section>';
+}
+function resolveMissed(day,id,today,dest){
+ if(day>=today||!scheduledIds(day).includes(id)||get(id,day).done)return false;
+ const source=eid(id,day),target=eid(id,dest);
+ if(dest!==null&&(!validDay81(dest)||dest<today||paused81(dest)||v10Vacation(dest)?.mode==='pause'||
+     scheduledIds(dest).includes(id)||Object.hasOwn(data.entries,target)))return false;
+
+ const plans={...data.schedule}, originalDays={...state81().originalDays};
+ const previousEntries=data.entries, ignored={...data.ignoredActivities};
+ writeDay81(day,rawScheduled81(day).filter(key=>key!==id));
+ if(dest!==null){
+  writeDay81(dest,[...rawScheduled81(dest),id]);
+  delete data.ignoredActivities[target];
+  if(Object.hasOwn(data.entries,source)){
+   data.entries={...previousEntries,[target]:previousEntries[source]};
+   delete data.entries[source];
+  }
+ }
+ if(persist())return true;
+ data.schedule=plans;state81().originalDays=originalDays;
+ data.entries=previousEntries;data.ignoredActivities=ignored;
+ return false;
+}
+document.addEventListener('click',e=>{
+ const button=e.target.closest('[data-missed-remove],[data-missed-move]');
+ if(!button)return;
+ e.preventDefault();
+ const [day,id]=(button.dataset.missedRemove||button.dataset.missedMove).split('|');
+ const dest=button.dataset.missedMove?button.closest('.v6-level').querySelector('[data-missed-date]').value:null;
+ if(dest===null&&!confirm('Retirer cette séance du planning ?'))return;
+ if(!resolveMissed(day,id,todayISO(),dest)){
+  if(dest!==null)alert('Choisis aujourd’hui ou une date future disponible pour cette séance.');
+  return;
+ }
+ render();
+},true);
+const todayBeforeMissed=renderToday;
+renderToday=function(){return missedPanel(todayISO())+todayBeforeMissed()};
+
+let lastLocalDay=todayISO(),midnightHandle;
+if(!validDay81(data.v84MissedSince||'')){
+ data.v84MissedSince=[V8_START,isoOf(monday(plus(lastLocalDay,-1)))].sort().at(-1);
+ persist();
+}
+function refreshLocalDay(){
+ const current=todayISO();
+ if(current!==lastLocalDay){
+  const previous=lastLocalDay;
+  lastLocalDay=current;
+  if(!openId&&view==='today'){
+   if(date===previous)date=current;
+   render();
+  }
+ }
+ clearTimeout(midnightHandle);
+ const next=new Date();next.setHours(24,0,0,0);
+ midnightHandle=setTimeout(refreshLocalDay,Math.max(1,next.getTime()-Date.now()));
+}
+window.addEventListener('pageshow',refreshLocalDay);
+window.addEventListener('focus',refreshLocalDay);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshLocalDay()});
+refreshLocalDay();
 
 // V7.5.4 : le nouveau type de pompes libres a son propre identifiant,
 // distinct des anciens IDs exclus par le filtre de migration.

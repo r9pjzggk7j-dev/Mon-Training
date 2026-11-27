@@ -1,10 +1,16 @@
-Mon Training V8.3
+Mon Training V8.4
 
-À partir du mardi 24 novembre 2026, le planning par défaut propose
-BikeErg facile (20 à 30 min), abdominaux (2 tours) et mobilité (5 min).
-La rubrique Mes étirements reste accessible sur la journée.
+- Tractions strictes de 12 à 26, par paliers de 2.
+- Chaise murale de 00:30 à 03:00, par paliers de 00:30.
+- Durées des défis au format min:ss, y compris dans l’historique.
+- Signal de fin du chrono et bouton « Tester le son ».
+- Après minuit, les séances non réalisées peuvent être retirées du planning
+  ou déplacées. Le déplacement conserve le brouillon de la séance.
 
-Pour mettre à jour une V8 existante, remplace index.html et sw.js à la
-racine du dépôt GitHub Pages par les fichiers de cette archive. Après
-publication, ouvre l’adresse habituelle dans le même navigateur ou avec
-le même raccourci iPhone pour retrouver les données locales.
+Avant la mise à jour, exporte une sauvegarde JSON depuis Données.
+Sur GitHub Pages, remplace index.html et sw.js à la racine du dépôt,
+puis ouvre l’adresse habituelle dans le même navigateur ou depuis le même
+raccourci iPhone. La mise à jour utilise le stockage local de la V8.
+
+Sur iPhone, teste le signal depuis le chrono. Le navigateur peut suspendre
+le son quand l’écran est verrouillé ou que l’application est en arrière-plan.
