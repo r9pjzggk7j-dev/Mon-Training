@@ -1615,13 +1615,26 @@ html body main#app.mt534l-settings > .hero:not(.mt534f-home-hero) .mini{
 }
 @media(max-width:390px){html body main#app.mt534l-settings > .hero:not(.mt534f-home-hero) h1{font-size:18px!important}}
 </style><style id="v6-styles">
-.trend-chart{width:100%;height:auto;max-width:660px;display:block;margin:.5rem 0}
+ .trend-panel{max-width:720px;margin-inline:auto}
+.trend-month h2{margin:0;text-transform:capitalize;text-align:center}
+.trend-month button{min-width:44px;font-size:23px}
+.trend-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:12px}
+.trend-filters button{display:grid;gap:4px;align-content:start;padding:8px 4px;text-align:left;border-top:3px solid var(--point-color)}
+.trend-filters button[aria-pressed="false"]{opacity:.55;border-top-color:transparent}
+.trend-filters span,.trend-filters small{font-size:11px}
+.trend-filters strong{font-size:clamp(13px,3.5vw,19px);white-space:nowrap;color:var(--point-color)}
 .trend-swipe{touch-action:pan-y}
-.trend-month b{text-transform:capitalize}
-.trend-chart text{fill:var(--muted,#a7b9cc);font-size:10px}
-.trend-grid{stroke:var(--line,#35495e);fill:none}
-.trend-line{fill:none;stroke:#75b5ff;stroke-width:2;stroke-linejoin:round}
-.trend-dot{fill:#75b5ff}.trend-max{fill:#ffc477;stroke:#191f26;stroke-width:1}
+.trend-reading{margin:8px 0 0;padding:9px 10px;min-height:42px;border-radius:8px;background:#18283b;color:#f4f8ff}
+.trend-plot{position:relative}
+.trend-chart{width:100%;height:auto;display:block}
+.trend-chart text{fill:#b8c9dc;font-size:13px}
+.trend-grid{stroke:#33475f;fill:none}.trend-baseline{stroke:#8092ac;stroke-dasharray:4 4}
+.trend-line{fill:none;stroke-width:2.8;stroke-linejoin:round;stroke-linecap:round}
+.trend-plot button.trend-point{position:absolute;transform:translate(-50%,-50%);display:grid;place-items:center;width:30px;height:30px;min-width:0;min-height:0;padding:0;border:0;background:transparent;border-radius:50%}
+.trend-point::after{content:"";width:9px;height:9px;border-radius:50%;background:var(--point-color);box-shadow:0 0 0 2px #152030}
+.trend-point-max::after{border-radius:1px;transform:rotate(45deg)}
+.trend-point[aria-pressed="true"]::after,.trend-point:focus-visible::after{outline:2px solid #fff;outline-offset:2px}
+
 
 .tabs{overflow-x:auto;justify-content:flex-start;scrollbar-width:none}.tabs button{flex:0 0 auto;min-width:68px;font-size:11px}.v6-record{color:#8cc6ff;font-weight:750}.v6-level{border:1px solid #34475d;border-radius:12px;padding:12px;margin:9px 0;background:#161f2d}.v6-metrics{display:grid;grid-template-columns:1fr 1fr;gap:9px}.v6-metrics .card{text-align:center}.v6-mini{font-size:12px;color:#b4c6dc}.v6-instruction{border-left:3px solid #3288f5;padding-left:12px}.v6-compact{display:flex;gap:8px;flex-wrap:wrap}.v6-compact button{flex:1}.v6-hidden{display:none}
 </style><script>
@@ -2379,7 +2392,7 @@ header=function(){return v8PreviousHeader().replace(/V7\.5\b/g,'V8')};
 const v8PreviousRender=render;
 render=function(){
  v8PreviousRender();
- document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.6 · Stockage local'});
+ document.querySelectorAll('.mt534h-version').forEach(label=>{label.textContent='Mon Training V8.7 · Stockage local'});
 };
 
 // V8.1 — a day owns its exercise snapshot and its draft.
@@ -2710,9 +2723,6 @@ refreshLocalDay();
 // Les graphiques utilisent les mesures des séances terminées, par jour et par mois civil.
 const continuousBikeIds=new Set(['bike1','bike3','bikeEnd39','bikeEasy39','bikeV8EasyTuesday','bikeV8Endurance','bikeV8Performance']);
 const intervalBikeIds=new Set(['bikeHard39','bikeV8Intervals']);
-const strengthMetrics={bench:['Développé couché · 6 répétitions ou plus','kg'],pushups:['Pompes · volume par jour','rép.']};
-let strengthMetric='bench';
-const trendMonths={strength:null,bike:null};
 const trendNumber=value=>Number(String(value??'').trim().replace(',','.'));
 const trendDisplay=value=>value.toLocaleString('fr-FR',{maximumFractionDigits:2});
 const trendExercise=name=>String(name||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -2763,87 +2773,124 @@ function monthTrend(rows,month,sumDaily){
  }
  return {days,records,points:[...grouped.values()]};
 }
-function trendChart({days,points,records},label,unit,month){
- const maxRecords=records.filter(row=>row.max&&!points.some(point=>point.day===row.day&&point.max&&point.value===row.value));
- const values=[...points,...maxRecords].map(point=>point.value);
- const low=values.length?Math.min(...values):0,high=values.length?Math.max(...values):3;
- const step=Math.max(1,Math.ceil((high-low)/3));
- const bottom=Math.max(0,Math.floor(low/step)*step-(low===high?step:0));
- const top=Math.max(bottom+3*step,Math.ceil(high/step)*step);
- const x=day=>48+(day-1)*330/(days-1);
- const y=value=>144-120*(value-bottom)/(top-bottom);
- const grid=Array.from({length:4},(_,i)=>{
-  const value=bottom+i*(top-bottom)/3,at=y(value);
-  return `<path class="trend-grid" d="M48 ${at}H378"/>${points.length?`<text x="42" y="${at+3}" text-anchor="end">${esc(trendDisplay(value))}</text>`:''}`;
- }).join('');
- const dates=[1,5,10,15,20,25,days].map(day=>
-  `<text x="${x(day)}" y="168" text-anchor="middle">${day}</text>`).join('');
- const line=points.map((point,i)=>`${i?'L':'M'}${x(Number(point.day.slice(8)))} ${y(point.value)}`).join(' ');
- const dots=[...points,...maxRecords].map(point=>{
-  const px=x(Number(point.day.slice(8))),py=y(point.value);
-  const title=`<title>${trendDate(point.day)} · ${esc(trendDisplay(point.value))} ${esc(unit)}${point.max?' · À fond':''}</title>`;
-  return point.max?`<rect class="trend-max" x="${px-4}" y="${py-4}" width="8" height="8" transform="rotate(45 ${px} ${py})">${title}</rect>`:
-   `<circle class="trend-dot" cx="${px}" cy="${py}" r="4">${title}</circle>`;
- }).join('');
- return `<svg class="trend-chart" viewBox="0 0 400 176" role="img" aria-label="${esc(label)}, ${esc(v73MonthLabel(month))}, en ${esc(unit)}">
-  ${grid}${dates}<path class="trend-line" d="${line}"/>${dots}</svg>`;
+const trendSeries={
+ bench:{name:'Développé couché',unit:'kg',color:'#7db6ff'},
+ pushups:{name:'Pompes',unit:'rép.',color:'#65dcb0'},
+ bike:{name:'BikeErg',unit:'W',color:'#ffc475'}
+};
+const visibleTrends=new Set(Object.keys(trendSeries));
+let selectedTrendMonth=null;
+function trendPointLabel(point,key){
+ const {name,unit}=trendSeries[key];
+ return `${name} · ${trendDate(point.day)} · ${trendDisplay(point.value)} ${unit}${key==='bench'?' × '+point.detail.split(' ')[0]:''}${point.max?' · À fond':''}`;
 }
-function trendPanel(title,field,metric,rows,current){
- const month=trendMonths[field]||current;
- const [label,unit]=field==='strength'?strengthMetrics[metric]:['BikeErg · 20 min en continu','W'];
- const chart=monthTrend(rows,month,metric==='pushups');
- const options=Object.entries(strengthMetrics).map(([key,[name]])=>
-  `<option value="${key}" ${key===metric?'selected':''}>${esc(name)}</option>`).join('');
- const description=metric==='bench'?'Charge la plus lourde du jour sur une série de 6 répétitions ou plus.':
-  metric==='pushups'?'Total des répétitions par jour, toutes séries de pompes additionnées.':
-  'Meilleurs watts moyens du jour sur 20 min en continu. Le losange signale une séance à fond.';
- return `<section class="card" data-trend-panel="${field}">
-  <h2>${title}</h2>${field==='strength'?`<label>Mesure<select data-trend="strength">${options}</select></label>`:''}
+function combinedTrend(rows,month){
+ return Object.fromEntries(Object.keys(trendSeries).map(key=>{
+  const chart=monthTrend(rows[key],month,key==='pushups');
+  const base=chart.points[0]?.value;
+  const extra=chart.records.filter(row=>row.max&&!chart.points.some(point=>point.day===row.day&&point.max&&point.value===row.value));
+  const index=point=>({...point,index:point.value/base*100});
+  return [key,{days:chart.days,points:chart.points.map(index),extra:extra.map(index)}];
+ }));
+}
+function trendChart(series){
+ const active=[...visibleTrends];
+ const points=active.flatMap(key=>[...series[key].points,...series[key].extra].map(point=>({...point,key})));
+ const latest=[...points].sort((a,b)=>b.day.localeCompare(a.day))[0];
+ const values=points.map(point=>point.index);
+ const span=Math.max(100,...values)-Math.min(100,...values);
+ const step=Math.max(5,Math.ceil(span/20)*5);
+ const bottom=Math.max(0,Math.floor(Math.min(100,...values)/step)*step-(span===0?step:0));
+ const top=Math.max(bottom+2*step,Math.ceil(Math.max(100,...values)/step)*step);
+ const days=series.bench.days,x=day=>44+(day-1)*324/(days-1),y=value=>207-178*(value-bottom)/(top-bottom);
+ const ticks=[bottom,(bottom+top)/2,top];
+ if(100>bottom&&100<top&&!ticks.includes(100))ticks.splice(1,1,100);
+ const grid=ticks.map(value=>`<path class="trend-grid ${value===100?'trend-baseline':''}" d="M44 ${y(value)}H368"/>
+  <text x="37" y="${y(value)+4}" text-anchor="end">${trendDisplay(value)}</text>`).join('');
+ const dates=[1,10,20,days].map(day=>`<text x="${x(day)}" y="236" text-anchor="middle">${day}</text>`).join('');
+ const lines=active.map(key=>{
+  const path=series[key].points.map((point,i)=>`${i?'L':'M'}${x(Number(point.day.slice(8)))} ${y(point.index)}`).join(' ');
+  return `<path class="trend-line" style="stroke:${trendSeries[key].color}" d="${path}"/>`;
+ }).join('');
+ const dots=points.map(point=>{
+  const label=esc(trendPointLabel(point,point.key));
+  const left=x(Number(point.day.slice(8)))/3.84,top=y(point.index)/2.5;
+  return `<button type="button" class="trend-point ${point.max?'trend-point-max':''}" data-trend-point
+   data-trend-coordinate="${left}|${top}" aria-label="${label}" aria-pressed="${point===latest}" style="--point-color:${trendSeries[point.key].color};left:${left}%;top:${top}%"></button>`;
+ }).join('');
+ return `<div class="trend-swipe" data-trend-swipe>
+  <p class="trend-reading" data-trend-reading aria-live="polite">${latest?esc(trendPointLabel(latest,latest.key)):'Aucune mesure pour ce mois.'}</p>
+  <div class="trend-plot"><svg class="trend-chart" viewBox="0 0 384 250" aria-hidden="true">${grid}${dates}${lines}</svg>${dots}</div>
+ </div>`;
+}
+function trendPanel(rows,current){
+ const month=selectedTrendMonth||current,series=combinedTrend(rows,month);
+ const filters=Object.entries(trendSeries).map(([key,info])=>{
+  const points=series[key].points,last=points.at(-1),previous=points.at(-2);
+  const delta=previous?Math.round((last.value-previous.value)*100)/100:null;
+  const change=delta===null?'':` · ${delta>0?'+':''}${trendDisplay(delta)} ${info.unit}`;
+  return `<button type="button" data-trend-series="${key}" aria-pressed="${visibleTrends.has(key)}" style="--point-color:${info.color}">
+   <span>${info.name}</span><strong>${last?trendDisplay(last.value)+' '+info.unit+(key==='bench'?' × '+last.detail.split(' ')[0]:''):'—'}</strong>
+   ${last?`<small>${trendDate(last.day)}${change}</small>`:''}</button>`;
+ }).join('');
+ const detail=Object.keys(trendSeries).filter(key=>visibleTrends.has(key)).flatMap(key=>
+  [...series[key].points,...series[key].extra].map(point=>({...point,key}))).sort((a,b)=>b.day.localeCompare(a.day));
+ return `<section class="card trend-panel">
   <div class="row trend-month"><button type="button" data-trend-month="-1" aria-label="Mois précédent">‹</button>
-   <b aria-live="polite">${esc(v73MonthLabel(month))}</b>
+   <h2 aria-live="polite">${esc(v73MonthLabel(month))}</h2>
    <button type="button" data-trend-month="1" aria-label="Mois suivant" ${month>=current?'disabled':''}>›</button></div>
-  <p class="mini">${description}</p>
-  <div class="trend-swipe" data-trend-swipe="${field}">${trendChart(chart,label,unit,month)}</div>
-  ${chart.records.length?`<details><summary>Mesures du mois</summary>
-   ${[...chart.records].reverse().map(row=>`<div class="row"><span>${trendDate(row.day)} · ${esc(row.detail)}${row.max?' · À fond':''}</span><b>${trendDisplay(row.value)} ${unit}</b></div>`).join('')}</details>`:
-   '<p class="mini">Aucune mesure enregistrée pour ce mois.</p>'}
+  <div class="trend-filters" aria-label="Courbes affichées">${filters}</div>
+  <p class="mini">La première mesure de chaque courbe vaut 100. Touche un point pour voir la mesure réelle.</p>
+  ${trendChart(series)}
+  <p class="mini">Développé couché dès 6 répétitions · Pompes par jour · BikeErg 20 min en continu (losange si à fond).</p>
+  ${detail.length?`<details><summary>Mesures du mois</summary>${detail.map(point=>`<p class="mini">${esc(trendPointLabel(point,point.key))}</p>`).join('')}</details>`:''}
  </section>`;
 }
 const previousProgress85=renderProgress;
 renderProgress=function(){
- const rows=trendData(),current=todayISO().slice(0,7);
- return trendPanel('Force','strength',strengthMetric,rows[strengthMetric],current)+
-  trendPanel('Endurance · BikeErg','bike','bike',rows.bike,current)+previousProgress85();
+ return trendPanel(trendData(),todayISO().slice(0,7))+previousProgress85();
 };
-document.addEventListener('change',e=>{
- if(e.target.dataset.trend!=='strength'||!Object.hasOwn(strengthMetrics,e.target.value))return;
- strengthMetric=e.target.value;
- render();
- document.querySelector('[data-trend="strength"]')?.focus({preventScroll:true});
-});
-function shiftTrendMonth(field,delta){
- if(!Object.hasOwn(trendMonths,field)||![-1,1].includes(delta))return false;
+function shiftTrendMonth(delta){
+ if(![-1,1].includes(delta))return false;
  const current=todayISO().slice(0,7);
- const [year,month]=(trendMonths[field]||current).split('-').map(Number);
+ const [year,month]=(selectedTrendMonth||current).split('-').map(Number);
  const next=isoOf(new Date(year,month-1+delta,1,12)).slice(0,7);
  if(next>current)return false;
- trendMonths[field]=next;return true;
+ selectedTrendMonth=next;return true;
 }
 document.addEventListener('click',e=>{
- const button=e.target.closest('[data-trend-month]');
- if(!button)return;
- const field=button.closest('[data-trend-panel]').dataset.trendPanel;
- if(!shiftTrendMonth(field,Number(button.dataset.trendMonth)))return;
+ const point=e.target.closest('[data-trend-point]');
+ if(point){
+  const graph=point.closest('[data-trend-swipe]');
+  const previous=graph.querySelector('[data-trend-point][aria-pressed="true"]');
+  const coordinate=point.dataset.trendCoordinate;
+  const coincident=[...graph.querySelectorAll(`[data-trend-coordinate="${coordinate}"]`)];
+  const next=coincident.length>1&&coincident.includes(previous)
+   ?coincident[(coincident.indexOf(previous)+1)%coincident.length]:point;
+  previous?.setAttribute('aria-pressed','false');
+  next.setAttribute('aria-pressed','true');
+  graph.querySelector('[data-trend-reading]').textContent=next.getAttribute('aria-label');
+  return;
+ }
+ const series=e.target.closest('[data-trend-series]');
+ const month=e.target.closest('[data-trend-month]');
+ if(series){
+  const key=series.dataset.trendSeries;
+  if(visibleTrends.has(key)){
+   if(visibleTrends.size===1)return;
+   visibleTrends.delete(key);
+  }else visibleTrends.add(key);
+ }else if(!month||!shiftTrendMonth(Number(month.dataset.trendMonth)))return;
+ const selector=series?`[data-trend-series="${series.dataset.trendSeries}"]`:`[data-trend-month="${month.dataset.trendMonth}"]`;
  render();
- const current=document.querySelector(`[data-trend-panel="${field}"] [data-trend-month="${button.dataset.trendMonth}"]`);
- if(current&&!current.disabled)current.focus({preventScroll:true});
+ const next=document.querySelector(selector);
+ if(next&&!next.disabled)next.focus({preventScroll:true});
 });
 let trendTouch=null;
 document.addEventListener('touchstart',e=>{
- const swipe=e.target.closest('[data-trend-swipe]');
- if(!swipe||e.touches.length!==1){trendTouch=null;return}
+ if(!e.target.closest('[data-trend-swipe]')||e.touches.length!==1){trendTouch=null;return}
  const touch=e.touches[0];
- trendTouch={field:swipe.dataset.trendSwipe,id:touch.identifier,x:touch.clientX,y:touch.clientY};
+ trendTouch={id:touch.identifier,x:touch.clientX,y:touch.clientY};
 },{passive:true});
 document.addEventListener('touchend',e=>{
  const start=trendTouch;trendTouch=null;
@@ -2851,7 +2898,7 @@ document.addEventListener('touchend',e=>{
  const touch=[...e.changedTouches].find(item=>item.identifier===start.id);
  if(!touch)return;
  const dx=touch.clientX-start.x,dy=touch.clientY-start.y;
- if(Math.abs(dx)>=45&&Math.abs(dx)>Math.abs(dy)*1.5&&shiftTrendMonth(start.field,dx>0?-1:1))render();
+ if(Math.abs(dx)>=45&&Math.abs(dx)>Math.abs(dy)*1.5&&shiftTrendMonth(dx>0?-1:1))render();
 },{passive:true});
 document.addEventListener('touchcancel',()=>{trendTouch=null},{passive:true});
 

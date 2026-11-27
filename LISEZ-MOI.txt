@@ -1,19 +1,18 @@
-Mon Training V8.6
+Mon Training V8.7
 
-Dans Progrès, chaque graphique affiche un mois civil complet.
-Les mesures sont reliées par une ligne. Pour changer de mois, utilise
-les flèches ou balaie horizontalement le graphique sur iPhone.
+Dans Progrès, un graphique mensuel réunit le développé couché,
+les pompes et le BikeErg. Chaque courbe a sa couleur et démarre à 100
+à sa première mesure du mois. Un indice de 105 correspond à une
+hausse de 5 % sur cette mesure. Touche un point pour voir la date
+et la valeur réelle. Touche le bouton d’une activité pour afficher
+ou masquer sa courbe.
 
-Force : le développé couché affiche la meilleure charge par jour
-sur une série de 6 répétitions ou plus. La vue Pompes affiche le
-total des répétitions enregistrées chaque jour.
-
-Endurance : le graphique compare les watts moyens sur les séances
-de BikeErg de 20 minutes en continu. Un losange signale une séance
-déclarée à fond. Les deux graphiques se mettent à jour avec les
-séances enregistrées.
+Les flèches et le balayage horizontal changent le mois affiché.
+Le développé couché retient les séries de 6 répétitions ou plus,
+les pompes sont totalisées par jour, et le BikeErg retient les
+séances de 20 minutes en continu. Un losange indique un effort à fond.
 
 Avant la mise à jour, exporte une sauvegarde JSON depuis Données.
-Sur GitHub Pages, remplace index.html et sw.js à la racine du dépôt,
-puis rouvre l’adresse habituelle dans le même navigateur ou depuis
-le même raccourci iPhone pour retrouver tes données locales.
+Sur GitHub Pages, remplace index.html et sw.js à la racine du dépôt.
+Rouvre l’adresse habituelle dans le même navigateur ou depuis le même
+raccourci iPhone pour retrouver tes données locales.
